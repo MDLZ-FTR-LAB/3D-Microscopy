@@ -17,7 +17,11 @@ struct GestureToolbar: View {
                     appModel.gestureMode = mode
                     //if presses measure enables hand tracking
                     let wasOn = appModel.isOn
+<<<<<<< Updated upstream
                     appModel.isOn = (mode == .measure)
+=======
+                    appModel.isOn = (mode == .measure || mode == .annotate || mode == .angle)
+>>>>>>> Stashed changes
                     
                     
                     // reset finger positions
@@ -40,6 +44,13 @@ struct GestureToolbar: View {
                             Image(systemName: "plus.magnifyingglass")
                         case .measure:
                             Image(systemName: "ruler")
+<<<<<<< Updated upstream
+=======
+                        case .angle:
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                        case .annotate:
+                            Image(systemName: "note.text")
+>>>>>>> Stashed changes
                         case .crop:
                             Image(systemName: "scissor")
                         }
