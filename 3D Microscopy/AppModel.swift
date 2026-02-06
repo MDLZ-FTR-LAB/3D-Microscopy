@@ -8,6 +8,8 @@
 import SwiftUI
 import RealityKit
 import ARKit
+import Combine
+
 
 enum GestureMode: String, CaseIterable {
     case none, drag, rotate, scale, measure, annotate, crop
@@ -34,6 +36,8 @@ class AppModel: ObservableObject {
     @Published var isDrawingCropLine = false
     @Published var cropStartPoint: SIMD3<Float>?
     @Published var cropEndPoint: SIMD3<Float>?
+    var cancellables: Set<AnyCancellable> = []
+
 
     func cleanupCropPreview() {
         cropPreviewEntity?.removeFromParent()

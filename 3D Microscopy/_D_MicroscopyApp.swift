@@ -1,63 +1,55 @@
-//
-//  _D_MicroscopyApp.swift
-//  3D Microscopy
-//
-//  Created by Future Lab XR1 in 2025.
-//
-
 import SwiftUI
-//import RealityKit //why does this cause errors.
 import RealityKitContent
+// import RealityKit   // Uncomment after structure compiles, and only if your target supports it.
 
 @main
 struct _D_MicroscopyApp: App {
-    @State private var appModel = AppModel()
-    
+
+    @StateObject private var appModel = AppModel()
 
     var body: some Scene {
-        //main screen launch
+
+        // Main screen launch
         WindowGroup(id: "MainWindow") {
             ContentView()
                 .environmentObject(appModel)
         }
         .windowStyle(.plain)
         
-        //open immersive
+        // Open immersive
         ImmersiveSpace(id: appModel.immersiveSpaceID) {
             ImmersiveView()
-            //toggles state view
                 .environmentObject(appModel)
                 .onAppear {
                     appModel.immersiveSpaceState = .open
                     print("Immersive appeared. isOn: \(appModel.isOn), modelURL: \(String(describing: appModel.modelURL))")
-                
                 }
                 .onDisappear {
                     appModel.immersiveSpaceState = .closed
                 }
         }
-        .immersionStyle(selection: .constant(.full), in: .full) // immersive for VR
+        .immersionStyle(selection: .constant(.mixed), in: .mixed) // Isabella - changed `full` to `mixed` for video
         
-        // instantiating toolbar
+        // Gesture toolbar
         WindowGroup(id: "GestureControlPanel") {
             GestureToolbar()
                 .environmentObject(appModel)
         }
         .windowStyle(.plain)
-        .defaultSize(width: 1200, height: 100) // Made wider to accommodate new button
-        
+        .defaultSize(width: 1200, height: 100)
+
         // Measurement tutorial
         WindowGroup(id: "TutorialView") {
             TutorialView()
                 .environmentObject(appModel)
         }
-        
+
         // Annotation tutorial
         WindowGroup(id: "AnnotationTutorialView") {
             AnnotationTutorialView()
                 .environmentObject(appModel)
         }
-        
+
         // Annotation text input window
         WindowGroup(id: "AnnotationInput") {
             AnnotationInputView(annotationManager: appModel.annotationManager)
@@ -65,8 +57,8 @@ struct _D_MicroscopyApp: App {
         }
         .windowStyle(.plain)
         .defaultSize(width: 450, height: 500)
-        
-        // Annotation controls overlay (for annotation mode)
+
+        // Annotation controls overlay
         WindowGroup(id: "AnnotationControls") {
             AnnotationControlsView(annotationManager: appModel.annotationManager)
                 .environmentObject(appModel)

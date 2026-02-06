@@ -3,20 +3,12 @@
 //  3D Microscopy
 //
 //  Created by Future Lab on 7/29/25.
-//
-
-
-//
-//  AnnotationSystem.swift
-//  3D Microscopy
-//
 //  Annotation system for placing sticky notes on 3D models
-//
-
+ 
 import SwiftUI
 import RealityKit
 import Foundation
-
+ 
 // MARK: - Annotation Data Structure
 struct AnnotationNote {
     let id: UUID
@@ -103,10 +95,18 @@ struct AnnotationNote {
             ))
         }
         
-        textEntity.position = SIMD3<Float>(0, 0, noteThickness/2 + 0.001)
+        // Position text directly on the sticky note (only slight z-offset)
+        textEntity.position = SIMD3<Float>(0, 0, noteThickness/2 + 0.0005)
         
         // Make the entire annotation billboard (always face user)
         containerEntity.components.set(BillboardComponent())
+        
+        // Ensure annotations don't block interaction with the model
+        // Remove any input target components to prevent interference
+        containerEntity.components.remove(InputTargetComponent.self)
+        noteEntity.components.remove(InputTargetComponent.self)
+        textEntity.components.remove(InputTargetComponent.self)
+        shadowEntity.components.remove(InputTargetComponent.self)
         
         // Assembly
         containerEntity.addChild(shadowEntity)
@@ -141,7 +141,7 @@ struct AnnotationNote {
         }
     }
 }
-
+ 
 // MARK: - Annotation Manager
 @MainActor
 class AnnotationManager: ObservableObject {
@@ -280,39 +280,7 @@ class AnnotationManager: ObservableObject {
         deselectAnnotation()
     }
     
-    // MARK: - Annotation Management
-    
-    /// Add an annotation to the scene
-    func addAnnotation(_ annotation: AnnotationNote) {
-        root.addChild(annotation.entity)
-        annotations[annotation.id] = annotation.entity
-        print("Added annotation to scene: \(annotation.id)")
-    }
-    
-    /// Remove an annotation from the scene
-    func removeAnnotation(id: UUID) {
-        guard let entity = annotations[id] else {
-            print("Annotation not found: \(id)")
-            return
-        }
-        entity.removeFromParent()
-        annotations.removeValue(forKey: id)
-        print("Removed annotation from scene: \(id)")
-    }
-    
-    /// Clear all annotations from the scene
-    func clearAllAnnotations() {
-        annotations.values.forEach { $0.removeFromParent() }
-        annotations.removeAll()
-        print("Cleared all annotations from scene")
-    }
-    
-    /// Get annotation count
-    var annotationCount: Int {
-        return annotations.count
-    }
-    
-    // MARK: - Statistics and Info (updated to include annotations) and Info
+    // MARK: - Statistics and Info and Info
     
     /// Get summary of annotations
     func getAnnotationSummary() -> String {
@@ -345,3 +313,4 @@ class AnnotationManager: ObservableObject {
         return export
     }
 }
+ 

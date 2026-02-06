@@ -20,6 +20,7 @@ struct ImmersiveView: View {
     
     // Add a state variable to force RealityView updates
     @State private var updateTrigger: Bool = false
+    @State private var scaleStart: SIMD3<Float>? = nil // Isabella
     
     var body: some View {
         gestureWrapper(for: modelEntity) {
@@ -200,9 +201,26 @@ struct ImmersiveView: View {
         case .scale:
             content().gesture(
                 MagnificationGesture().onChanged { value in
-                    if let entity = entity {
-                        entity.transform.scale = [Float(value), Float(value), Float(value)]
+                    // Roshni's code below:
+//                    if let entity = entity {
+//                        entity.transform.scale = [Float(value), Float(value), Float(value)]
+//                    }
+                    // Isabella's code below:
+                    guard let entity = entity else { return }
+
+                    // Capture the scale once per pinch gesture
+                    if scaleStart == nil {
+                        scaleStart = entity.transform.scale
                     }
+
+                    let start = scaleStart ?? entity.transform.scale
+                    let m = Float(value) // value starts near 1.0 for each new pinch
+
+                    entity.transform.scale = start * SIMD3<Float>(repeating: m)
+                }
+                .onEnded { _ in
+                    // End of pinch: keep the final scale, reset only the baseline
+                    scaleStart = nil
                 }
             )
             
@@ -229,7 +247,7 @@ struct ImmersiveView: View {
                             appModel.myEntities.clearAllMeasurements()
                         }
                 )
-        
+            
         case .annotate:
             content()
                 .onTapGesture { location in
@@ -250,283 +268,225 @@ struct ImmersiveView: View {
             
         case .crop:
             content()
+                .gesture(
+                    DragGesture(minimumDistance: 10) // Reduced minimum distance
+                        .onChanged { value in
+                            print("🔄 Drag detected - translation: \(value.translation)")
+                            guard let entity = entity else {
+                                print("❌ No entity found")
+                                return
+                            }
+                            
+                            if !appModel.isDrawingCropLine {
+                                print("✅ Starting crop line drawing")
+                                appModel.isDrawingCropLine = true
+                                appModel.cropStartPoint = convertScreenToWorld(value.startLocation, entity: entity)
+                                createSimpleCropPreview(entity: entity)
+                            }
+                            
+                            appModel.cropEndPoint = convertScreenToWorld(value.location, entity: entity)
+                            updateSimpleCropPreview(entity: entity)
+                        }
+                        .onEnded { value in
+                            print("🎯 Drag ended - applying crop")
+                            guard let entity = entity else {
+                                print("❌ No entity found for crop")
+                                return
+                            }
+                            
+                            // Simple demo: just apply the crop effect
+                            applyDemoCrop(to: entity)
+                            
+                            // Cleanup
+                            appModel.cleanupCropPreview()
+                            appModel.isDrawingCropLine = false
+                            appModel.cropStartPoint = nil
+                            appModel.cropEndPoint = nil
+                        }
+                )
+            
+            
         default:
             content() // No gesture
         }
     }
+    
+    // MARK: - Simple Preview (just a line)
+    func createSimpleCropPreview(entity: Entity) {
+        appModel.cleanupCropPreview()
+        
+        // Create a simple red line
+        let material = UnlitMaterial(color: .red)
+        let mesh = MeshResource.generateBox(size: [0.01, 0.01, 0.5])
+        
+        appModel.cropPreviewEntity = ModelEntity(mesh: mesh, materials: [material])
+        
+        if let parent = entity.parent {
+            parent.addChild(appModel.cropPreviewEntity!)
+        }
+    }
+    
+    func updateSimpleCropPreview(entity: Entity) {
+        guard let previewEntity = appModel.cropPreviewEntity,
+              let startPoint = appModel.cropStartPoint,
+              let endPoint = appModel.cropEndPoint else { return }
+        
+        let center = (startPoint + endPoint) / 2
+        let length = distance(startPoint, endPoint)
+        
+        previewEntity.position = center
+        previewEntity.transform.scale = SIMD3<Float>(1, 1, max(length, 0.1))
+    }
+    
+    // MARK: - Demo Crop Effect (Simple Transform)
+    
+    func createClippingMaterial(for entity: ModelEntity) {
+        // Skip the custom material approach - use the simpler alternatives instead
+        // The CustomMaterial API is complex and varies between OS versions
+        
+        // Fall back to the simple scaling method
+        applyDemoCropSuperSimple(to: entity)
+    }
+    
+    // MARK: - Even Simpler Alternative - Just Scale and Clone
+    func applyDemoCropAlternative(to entity: Entity) {
+        guard let modelEntity = entity as? ModelEntity else { return }
+        
+        // Create a simple "cropped" effect by scaling and positioning
+        // This avoids all material API issues
+        
+        // Method 1: Just scale the original
+        modelEntity.transform.scale = SIMD3<Float>(0.6, 1, 1) // Scale down in X
+        modelEntity.position += SIMD3<Float>(-0.05, 0, 0) // Slight offset
+        
+        // Method 2: If you want to show "two pieces", create a duplicate
+        if let parent = modelEntity.parent {
+            let secondPiece = modelEntity.clone(recursive: true)
+            secondPiece.transform.scale = SIMD3<Float>(0.3, 1, 1) // Smaller piece
+            secondPiece.position = modelEntity.position + SIMD3<Float>(0.2, 0, 0) // Offset right
+            parent.addChild(secondPiece)
+        }
+        
+        print("Demo crop applied - model split with scaling!")
+    }
+    
+    // MARK: - Super Simple Version - Create Cut Effect
+    func applyDemoCropSuperSimple(to entity: Entity) {
+        print("🔧 Applying demo crop to entity: \(entity.name)")
+        
+        // Find the ModelEntity - it might be a child of the wrapper entity
+        var modelEntity: ModelEntity?
+        
+        if let directModel = entity as? ModelEntity {
+            modelEntity = directModel
+            print("✅ Entity is directly a ModelEntity")
+        } else {
+            // Look for ModelEntity in children (from centerEntity wrapper)
+            for child in entity.children {
+                if let childModel = child as? ModelEntity {
+                    modelEntity = childModel
+                    print("✅ Found ModelEntity in children: \(child.name)")
+                    break
+                }
+            }
+        }
+        
+        guard let model = modelEntity else {
+            print("❌ No ModelEntity found in entity or its children")
+            return
+        }
+        
+        print("✅ Before crop - scale: \(model.transform.scale), position: \(model.position)")
+        
+        // Create a "cut" effect by cloning the model and positioning pieces
+        let leftPiece = model.clone(recursive: true)
+        let rightPiece = model.clone(recursive: true)
+        
+        // Keep the same scale as original
+        let originalScale = model.transform.scale
+        leftPiece.transform.scale = originalScale
+        rightPiece.transform.scale = originalScale
+        
+        // Position the pieces to show a "cut"
+        leftPiece.position = model.position + SIMD3<Float>(-0.05, 0, 0) // Move left piece slightly left
+        rightPiece.position = model.position + SIMD3<Float>(0.1, 0, 0)  // Move right piece away (like it was cut off)
+        
+        // Make right piece much smaller to show it was "cropped away"
+        rightPiece.transform.scale = originalScale * 0.3 // Much smaller
+        
+        // Add both pieces to the parent
+        if let parent = model.parent {
+            parent.addChild(leftPiece)
+            parent.addChild(rightPiece)
+            
+            // Remove the original
+            model.removeFromParent()
+            
+            print("✅ Created left and right pieces")
+            print("🎉 Demo crop applied - model appears cut!")
+        } else {
+            print("❌ Model has no parent to add pieces to")
+        }
+    }
+    
+    // MARK: - Choose Your Demo Method
+    func applyDemoCrop(to entity: Entity) {
+        print("🔧 Replacing model with cropped version")
+
+        // Save world transform
+        let worldTransform = entity.transformMatrix(relativeTo: nil)
+
+        guard let parent = entity.parent else {
+            print("❌ No parent entity found")
+            return
+        }
+
+        // Remove all children recursively
+        recursivelyRemoveAllModelEntities(from: entity)
+
+        // Remove the parent entity itself
+        entity.removeFromParent()
+
+        // Load the cropped model and place it exactly in same position
+        Task {
+            do {
+                let croppedEntity = try await Entity(named: "left1")
+
+                // Apply original world transform
+                croppedEntity.setTransformMatrix(worldTransform, relativeTo: nil)
+
+                // Add new model
+                parent.addChild(croppedEntity)
+                print("✅ Replaced with cropped model at same position")
+            } catch {
+                print("❌ Failed to load cropped model: \(error)")
+            }
+        }
+    }
+    func recursivelyRemoveAllModelEntities(from entity: Entity) {
+        for child in entity.children {
+            recursivelyRemoveAllModelEntities(from: child)
+        }
+        print("🗑️ Removing: \(entity.name) [\(type(of: entity))]")
+        entity.removeFromParent()
+    }
+
+
+
+    // MARK: - Simplified coordinate conversion for demo
+    func convertScreenToWorld(_ screenPoint: CGPoint, entity: Entity) -> SIMD3<Float> {
+        let bounds = entity.visualBounds(relativeTo: entity.parent)
+        let center = bounds.center
+        let size = bounds.max - bounds.min
+        
+        // Simple mapping - just use screen coordinates relative to entity
+        let normalizedX = Float(screenPoint.x / 500.0 - 1.0) // Assume 500pt screen width
+        let normalizedZ = Float(screenPoint.y / 500.0 - 1.0) // Assume 500pt screen height
+        
+        return SIMD3<Float>(
+            center.x + normalizedX * size.x * 0.5,
+            center.y,
+            center.z + normalizedZ * size.z * 0.5
+        )
+    }
 }
-//                .simultaneousGesture(
-//                    DragGesture(minimumDistance: 10)
-//                        .onChanged { value in
-//                            guard let entity = entity else { return }
-//                            
-//                            if !appModel.isDrawingCropLine {
-//                                print("Starting crop line drawing")
-//                                appModel.isDrawingCropLine = true
-//                                appModel.cropStartPoint = convertScreenToWorld(value.startLocation, entity: entity)
-//                                createCropPreview(entity: entity)
-//                            }
-//                            
-//                            appModel.cropEndPoint = convertScreenToWorld(value.location, entity: entity)
-//                            updateCropPreview(entity: entity)
-//                        }
-//                        .onEnded { value in
-//                            print("Crop gesture ended")
-//                            guard let entity = entity else { return }
-//                            
-//                            if let startPoint = appModel.cropStartPoint,
-//                               let endPoint = appModel.cropEndPoint {
-//                                print("Applying crop from \(startPoint) to \(endPoint)")
-//                                Task {
-//                                    await applyCrop(to: entity, startPoint: startPoint, endPoint: endPoint)
-//                                }
-//                            }
-//                            
-//                            cleanupCropState()
-//                        }
-//                )
-//        }
-//    }
-//            // MARK: - Helper function to clean up crop state
-//            func cleanupCropState() {
-//                appModel.cleanupCropPreview()
-//                appModel.isDrawingCropLine = false
-//                appModel.cropStartPoint = nil
-//                appModel.cropEndPoint = nil
-//            }
-//            
-//            // MARK: - Improved Preview Creation
-//            func createCropPreview(entity: Entity) {
-//                print("createCropPreview called")
-//                
-//                // Clean up any existing preview first
-//                appModel.cleanupCropPreview()
-//                
-//                do {
-//                    // Create a thin line mesh for the cutting preview
-//                    let previewMaterial = UnlitMaterial(color: .red)
-//                    previewMaterial.baseColor = .init(tint: .red.withAlphaComponent(0.8))
-//                    
-//                    // Start with a small box that we'll scale
-//                    let previewMesh = MeshResource.generateBox(size: [0.005, 0.005, 0.1])
-//                    
-//                    appModel.cropPreviewEntity = ModelEntity(mesh: previewMesh, materials: [previewMaterial])
-//                    appModel.cropPreviewEntity?.name = "crop_preview"
-//                    
-//                    // Add to the same parent as the model entity
-//                    if let parent = entity.parent {
-//                        parent.addChild(appModel.cropPreviewEntity!)
-//                    } else {
-//                        // Find the root content entity to add to
-//                        var currentEntity = entity
-//                        while let parent = currentEntity.parent {
-//                            currentEntity = parent
-//                        }
-//                        currentEntity.addChild(appModel.cropPreviewEntity!)
-//                    }
-//                    
-//                    print("Created and added preview entity")
-//                    
-//                } catch {
-//                    print("Error creating preview: \(error)")
-//                }
-//            }
-//            
-//            // MARK: - Improved Preview Update
-//            func updateCropPreview(entity: Entity) {
-//                guard let previewEntity = appModel.cropPreviewEntity,
-//                      let startPoint = appModel.cropStartPoint,
-//                      let endPoint = appModel.cropEndPoint else {
-//                    return
-//                }
-//                
-//                // Calculate line properties
-//                let center = (startPoint + endPoint) / 2
-//                let direction = endPoint - startPoint
-//                let length = simd_length(direction)
-//                
-//                // Avoid zero-length lines
-//                guard length > 0.001 else { return }
-//                
-//                let normalizedDirection = direction / length
-//                
-//                // Position the preview line
-//                previewEntity.position = center
-//                
-//                // Scale the line to match the drag distance
-//                previewEntity.transform.scale = SIMD3<Float>(1, 1, length * 10) // Scale Z-axis for length
-//                
-//                // Orient the line along the drag direction
-//                // Create rotation to align Z-axis with the drag direction
-//                let forward = SIMD3<Float>(0, 0, 1)
-//                let targetDirection = SIMD3<Float>(normalizedDirection.x, 0, normalizedDirection.z)
-//                
-//                if simd_length(targetDirection) > 0.001 {
-//                    let normalizedTarget = simd_normalize(targetDirection)
-//                    let dotProduct = simd_dot(forward, normalizedTarget)
-//                    
-//                    if abs(dotProduct - 1.0) > 0.001 { // Not already aligned
-//                        let axis = simd_cross(forward, normalizedTarget)
-//                        if simd_length(axis) > 0.001 {
-//                            let angle = acos(simd_clamp(dotProduct, -1.0, 1.0))
-//                            previewEntity.transform.rotation = simd_quatf(angle: angle, axis: simd_normalize(axis))
-//                        }
-//                    }
-//                }
-//            }
-//            
-//            // MARK: - Improved Screen to World Conversion
-//            func convertScreenToWorld(_ screenPoint: CGPoint, entity: Entity) -> SIMD3<Float> {
-//                // For visionOS, we need to work in the entity's coordinate space
-//                let bounds = entity.visualBounds(relativeTo: entity.parent)
-//                let entityCenter = bounds.center
-//                let entitySize = bounds.max - bounds.min
-//                
-//                // Convert screen coordinates to normalized device coordinates
-//                // Assuming screen space is roughly 0-1000 points in each direction
-//                let normalizedX = Float(screenPoint.x / 1000.0 - 0.5) // -0.5 to 0.5
-//                let normalizedY = Float(screenPoint.y / 1000.0 - 0.5) // -0.5 to 0.5
-//                
-//                // Map to entity space (assuming we're looking down the Z-axis)
-//                let worldX = entityCenter.x + normalizedX * entitySize.x
-//                let worldZ = entityCenter.z + normalizedY * entitySize.z
-//                let worldY = entityCenter.y // Keep same Y level as entity center
-//                
-//                let worldPoint = SIMD3<Float>(worldX, worldY, worldZ)
-//                print("Screen \(screenPoint) -> World \(worldPoint)")
-//                return worldPoint
-//            }
-//            
-//            // MARK: - Enhanced Mesh Slicing
-//            func sliceMesh(
-//                meshContents: MeshResource.Contents,
-//                planeCenter: SIMD3<Float>,
-//                planeNormal: SIMD3<Float>
-//            ) async throws -> (MeshResource, MeshResource) {
-//                
-//                guard let model = meshContents.models.first,
-//                      let part = model.parts.first else {
-//                    throw NSError(domain: "MeshSlicing", code: 1, userInfo: [NSLocalizedDescriptionKey: "No mesh data found"])
-//                }
-//                
-//                let positions = part.positions.elements
-//                let indices = part.triangleIndices?.elements ?? []
-//                
-//                guard positions.count > 0 && indices.count > 0 else {
-//                    throw NSError(domain: "MeshSlicing", code: 2, userInfo: [NSLocalizedDescriptionKey: "Empty mesh data"])
-//                }
-//                
-//                var leftVertices: [SIMD3<Float>] = []
-//                var rightVertices: [SIMD3<Float>] = []
-//                var leftIndices: [UInt32] = []
-//                var rightIndices: [UInt32] = []
-//                
-//                // Process triangles with improved slicing
-//                for i in stride(from: 0, to: indices.count, by: 3) {
-//                    let idx1 = Int(indices[i])
-//                    let idx2 = Int(indices[i + 1])
-//                    let idx3 = Int(indices[i + 2])
-//                    
-//                    let v1 = positions[idx1]
-//                    let v2 = positions[idx2]
-//                    let v3 = positions[idx3]
-//                    
-//                    // Calculate signed distances from plane
-//                    let d1 = dot(v1 - planeCenter, planeNormal)
-//                    let d2 = dot(v2 - planeCenter, planeNormal)
-//                    let d3 = dot(v3 - planeCenter, planeNormal)
-//                    
-//                    // Classify vertices
-//                    let leftMask = (d1 <= 0 ? 1 : 0) + (d2 <= 0 ? 2 : 0) + (d3 <= 0 ? 4 : 0)
-//                    
-//                    switch leftMask {
-//                    case 0: // All vertices on right side
-//                        addTriangle(vertices: [v1, v2, v3], to: &rightVertices, indices: &rightIndices)
-//                        
-//                    case 7: // All vertices on left side
-//                        addTriangle(vertices: [v1, v2, v3], to: &leftVertices, indices: &leftIndices)
-//                        
-//                    default: // Triangle intersects plane - for now, assign to majority side
-//                        let leftCount = (d1 <= 0 ? 1 : 0) + (d2 <= 0 ? 1 : 0) + (d3 <= 0 ? 1 : 0)
-//                        if leftCount >= 2 {
-//                            addTriangle(vertices: [v1, v2, v3], to: &leftVertices, indices: &leftIndices)
-//                        } else {
-//                            addTriangle(vertices: [v1, v2, v3], to: &rightVertices, indices: &rightIndices)
-//                        }
-//                    }
-//                }
-//                
-//                // Ensure both sides have geometry
-//                if leftVertices.isEmpty {
-//                    addTriangle(vertices: [
-//                        planeCenter + planeNormal * -0.001,
-//                        planeCenter + planeNormal * -0.001 + SIMD3<Float>(0.01, 0, 0),
-//                        planeCenter + planeNormal * -0.001 + SIMD3<Float>(0, 0.01, 0)
-//                    ], to: &leftVertices, indices: &leftIndices)
-//                }
-//                
-//                if rightVertices.isEmpty {
-//                    addTriangle(vertices: [
-//                        planeCenter + planeNormal * 0.001,
-//                        planeCenter + planeNormal * 0.001 + SIMD3<Float>       (0.01, 0, 0),
-//                        planeCenter + planeNormal * 0.001 + SIMD3<Float>(0, 0.01, 0)
-//                    ], to: &rightVertices, indices: &rightIndices)
-//                }
-//                
-//                print("Slicing complete: Left=\(leftVertices.count) vertices, Right=\(rightVertices.count) vertices")
-//                
-//                // Create new mesh resources
-//                let leftMesh = try MeshResource.generate(from: leftVertices as! [MeshDescriptor], indices: leftIndices)
-//                let rightMesh = try MeshResource.generate(from: rightVertices as! [MeshDescriptor], indices: rightIndices)
-//                
-//                return (leftMesh, rightMesh)
-//            }
-//            
-//            // MARK: - Helper function to add triangle
-//            func addTriangle(vertices: [SIMD3<Float>], to vertexArray: inout [SIMD3<Float>], indices: inout [UInt32]) {
-//                let baseIndex = UInt32(vertexArray.count)
-//                vertexArray.append(contentsOf: vertices)
-//                indices.append(contentsOf: [baseIndex, baseIndex + 1, baseIndex + 2])
-//            }
-//            
-//            // MARK: - Improved Entity Creation
-//            func createSlicedEntities(
-//                originalEntity: ModelEntity,
-//                leftMesh: MeshResource,
-//                rightMesh: MeshResource,
-//                planeNormal: SIMD3<Float>
-//            ) {
-//                // Get original materials or create default
-//                let materials = originalEntity.model?.materials ?? [SimpleMaterial(color: .gray, isMetallic: false)]
-//                
-//                // Create left half with slight offset
-//                let leftEntity = ModelEntity(mesh: leftMesh, materials: materials)
-//                leftEntity.name = "sliced_left"
-//                leftEntity.transform = originalEntity.transform
-//                leftEntity.position = originalEntity.position + (planeNormal * -0.02)
-//                leftEntity.components.set(InputTargetComponent())
-//                leftEntity.generateCollisionShapes(recursive: true)
-//                
-//                // Create right half with slight offset
-//                let rightEntity = ModelEntity(mesh: rightMesh, materials: materials)
-//                rightEntity.name = "sliced_right"
-//                rightEntity.transform = originalEntity.transform
-//                rightEntity.position = originalEntity.position + (planeNormal * 0.02)
-//                rightEntity.components.set(InputTargetComponent())
-//                rightEntity.generateCollisionShapes(recursive: true)
-//                
-//                // Replace original with sliced parts
-//                if let parent = originalEntity.parent {
-//                    parent.addChild(leftEntity)
-//                    parent.addChild(rightEntity)
-//                    originalEntity.removeFromParent()
-//                    
-//                    // Update the modelEntity reference to one of the pieces (or keep both)
-//                    modelEntity = leftEntity // or create a container entity
-//                    
-//                    print("Successfully created sliced entities")
-//                } else {
-//                    print("Error: Original entity has no parent")
-//                }
-//            }
-//        }
