@@ -8,8 +8,6 @@
 import SwiftUI
 import RealityKit
 import ARKit
-<<<<<<< Updated upstream
-=======
 import AVFoundation
 import AudioToolbox
 
@@ -124,7 +122,6 @@ struct MeasurementLine {
         }
     }
 }
->>>>>>> Stashed changes
 
 // MARK: - AngleMeasurement
 
@@ -279,22 +276,6 @@ class MyEntities {
     // MARK: - Properties
     
     let root = Entity()
-<<<<<<< Updated upstream
-    let fingerTips: [HandAnchor.Chirality: Entity]
-    let line = Entity()
-    var resultBoard: Entity?
-    
-    init() {
-        // Create more visible finger tip indicators
-        let leftTip = ModelEntity(
-            mesh: .generateSphere(radius: 0.008),
-            materials: [SimpleMaterial(color: .red, roughness: 0.3, isMetallic: false)]
-        )
-        let rightTip = ModelEntity(
-            mesh: .generateSphere(radius: 0.008),
-            materials: [SimpleMaterial(color: .blue, roughness: 0.3, isMetallic: false)]
-        )
-=======
     var fingerTips: [HandAnchor.Chirality: Entity]
     let currentLine = Entity()
     var resultBoard: Entity?
@@ -307,11 +288,6 @@ class MyEntities {
     private var angleFirstRayEnd: SIMD3<Float>?    // First ray endpoint (right hand)
     private var angleReferenceEntity: Entity?
     private var tempAngleEntities: [Entity] = []
-    
-    // Angle measurement properties ƒ
-    private var angleReferenceLineStart: SIMD3<Float>?
-    private var angleReferenceLineEnd: SIMD3<Float>?
-    
     
     var angleCount: Int {
         return placedAngles.count
@@ -330,7 +306,6 @@ class MyEntities {
     init() {
         let leftTip = Self.createArrowIndicator(color: .systemPurple)
         let rightTip = Self.createArrowIndicator(color: .systemPurple)
->>>>>>> Stashed changes
         
         leftTip.position = Self.offscreenPosition
         rightTip.position = Self.offscreenPosition
@@ -342,16 +317,9 @@ class MyEntities {
         
         fingerTips.values.forEach { root.addChild($0) }
         
-<<<<<<< Updated upstream
-        // Make the line more visible but initially hidden
-        line.components.set(OpacityComponent(opacity: 0.9))
-        line.isEnabled = false
-        root.addChild(line)
-=======
         currentLine.components.set(OpacityComponent(opacity: 0.9))
         currentLine.isEnabled = false
         root.addChild(currentLine)
->>>>>>> Stashed changes
         
         root.isEnabled = false
     }
@@ -363,71 +331,13 @@ class MyEntities {
         root.addChild(resultBoardEntity)
     }
     
-<<<<<<< Updated upstream
-    func update() {
-=======
     func update(for mode: GestureMode = .measure) {
->>>>>>> Stashed changes
         guard let leftTip = fingerTips[.left],
               let rightTip = fingerTips[.right] else { return }
         
         let leftPos = leftTip.position
         let rightPos = rightTip.position
         
-<<<<<<< Updated upstream
-        let isLeftTracked = leftPos.x > -999 && leftPos.y > -999 && leftPos.z > -999
-        let isRightTracked = rightPos.x > -999 && rightPos.y > -999 && rightPos.z > -999
-        
-        // Only show measurement when both hands are tracked
-        guard isLeftTracked && isRightTracked else {
-            line.isEnabled = false
-            resultBoard?.isEnabled = false
-            return
-        }
-        
-        let centerPosition = (leftPos + rightPos) / 2
-        let length = distance(leftPos, rightPos)
-        
-        // Only show the line if there's a meaningful distance
-        if length > 0.005 { // Increased threshold
-            line.position = centerPosition
-            line.components.set(ModelComponent(
-                mesh: .generateBox(
-                    width: 0.003,
-                    height: 0.003,
-                    depth: length,
-                    cornerRadius: 0.001
-                ),
-                materials: [SimpleMaterial(color: .yellow, roughness: 0.2, isMetallic: false)]
-            ))
-            
-            line.look(at: leftPos, from: centerPosition, relativeTo: nil)
-            line.isEnabled = true
-            resultBoard?.isEnabled = true
-        } else {
-            line.isEnabled = false
-            resultBoard?.isEnabled = false
-        }
-        
-        // Position the result board above the center point
-        resultBoard?.setPosition(centerPosition + SIMD3<Float>(0, 0.1, 0), relativeTo: nil)
-    }
-    
-    func getResultString() -> String {
-        guard let leftTip = fingerTips[.left],
-              let rightTip = fingerTips[.right] else { return "No entities" }
-        
-        let leftPos = leftTip.position
-        let rightPos = rightTip.position
-        
-        let isLeftTracked = leftPos.x > -999 && leftPos.y > -999 && leftPos.z > -999
-        let isRightTracked = rightPos.x > -999 && rightPos.y > -999 && rightPos.z > -999
-        
-        guard isLeftTracked && isRightTracked else {
-            return "Show both hands to camera"
-        }
-        
-=======
         guard isTracked(leftPos), isTracked(rightPos) else {
             hideCurrentLineAndBoard()
             return
@@ -443,7 +353,7 @@ class MyEntities {
         updateArrowOrientations()
     }
     
-    // MARK: - Angle Measurement Methods (NEW WORKFLOW)
+    // MARK: - Angle Measurement Methods
     
     var hasActiveAngleReference: Bool {
         return angleFirstRayStart != nil && angleFirstRayEnd != nil
@@ -454,7 +364,6 @@ class MyEntities {
         clearAngleReference()
         
         // Store the STATIC reference line positions
-        // This line will NOT move with the hands anymore
         angleFirstRayStart = leftPos
         angleFirstRayEnd = rightPos
         
@@ -477,16 +386,16 @@ class MyEntities {
         referenceEntity.look(at: leftPos, from: center, relativeTo: nil)
         referenceEntity.components.set(OpacityComponent(opacity: 0.9))
         
-        // Add markers at endpoints to show this is the PIVOT and FIRST RAY ENDPOINT
+        // Add markers at endpoints
         let pivotMarker = Entity()
-        pivotMarker.position = leftPos  // This is the PIVOT (left hand position)
+        pivotMarker.position = leftPos
         pivotMarker.components.set(ModelComponent(
             mesh: .generateSphere(radius: 0.012),
             materials: [SimpleMaterial(color: .systemRed, roughness: 0.2, isMetallic: false)]
         ))
         
         let endMarker = Entity()
-        endMarker.position = rightPos  // This is the end of first ray
+        endMarker.position = rightPos
         endMarker.components.set(ModelComponent(
             mesh: .generateSphere(radius: 0.008),
             materials: [SimpleMaterial(color: .systemBlue, roughness: 0.2, isMetallic: false)]
@@ -502,26 +411,15 @@ class MyEntities {
         tempAngleEntities.append(container)
         
         playSystemClick(1)
-        print("🔵 First ray placed - Left hand (PIVOT): \(leftPos), Right hand (ray end): \(rightPos)")
-        print("   Now right pinch to place second ray and complete angle measurement")
+        print("🔵 First ray placed - Pivot: \(leftPos), Ray end: \(rightPos)")
     }
 
     func completeAngleWithRightHand(rightPos: SIMD3<Float>) {
-        guard let pivot = angleFirstRayStart,  // Left hand position = PIVOT
-              let firstRayEnd = angleFirstRayEnd else {  // Right hand position when first ray was placed
+        guard let pivot = angleFirstRayStart,
+              let firstRayEnd = angleFirstRayEnd else {
             print("⚠️ No reference line set")
             return
         }
-        
-        // Now we create angle measurement:
-        // - Pivot point: where left hand was during left pinch
-        // - First ray: from pivot to where right hand was during left pinch
-        // - Second ray: from pivot to where right hand is NOW (during right pinch)
-        
-        print("📐 Creating angle:")
-        print("   Pivot: \(pivot)")
-        print("   First ray end: \(firstRayEnd)")
-        print("   Second ray end (current right hand): \(rightPos)")
         
         let angle = AngleMeasurement(
             pivot: pivot,
@@ -532,10 +430,8 @@ class MyEntities {
         root.addChild(angle.entity)
         placedAngles.append(angle)
         
-        // Clear the reference line and temporary entities
         clearAngleReference()
         
-        // Limit stored angles
         if placedAngles.count > maxStoredMeasurements {
             let oldest = placedAngles.removeFirst()
             oldest.entity.removeFromParent()
@@ -559,7 +455,6 @@ class MyEntities {
     }
 
     func removeLastAngle() {
-        // If there's an active reference, cancel it
         if hasActiveAngleReference {
             clearAngleReference()
             playSystemClick(2)
@@ -567,7 +462,6 @@ class MyEntities {
             return
         }
         
-        // Otherwise remove the last completed angle
         guard let lastAngle = placedAngles.popLast() else {
             print("No angles to remove")
             return
@@ -595,7 +489,7 @@ class MyEntities {
         
         let count = placedAngles.count
         if count == 0 {
-            return "Left pinch: both hands define first ray (pivot + direction)"
+            return "Left pinch: define first ray"
         } else if count == 1 {
             return "1 angle measured"
         } else {
@@ -607,7 +501,6 @@ class MyEntities {
         placedAngles.forEach { $0.entity.isEnabled = isVisible }
         tempAngleEntities.forEach { $0.isEnabled = isVisible }
     }
-
     
     // MARK: - Measurement Management
     
@@ -633,7 +526,6 @@ class MyEntities {
         root.addChild(measurement.entity)
         placedMeasurements.append(measurement)
         
-        // Remove oldest if exceeding limit
         if placedMeasurements.count > maxStoredMeasurements {
             let oldest = placedMeasurements.removeFirst()
             oldest.entity.removeFromParent()
@@ -812,32 +704,11 @@ class MyEntities {
     }
     
     private func formatDistance(_ length: Float) -> String {
->>>>>>> Stashed changes
         let formatter = MeasurementFormatter()
         formatter.unitOptions = .providedUnit
         formatter.numberFormatter.minimumFractionDigits = 2
         formatter.numberFormatter.maximumFractionDigits = 2
         
-<<<<<<< Updated upstream
-        let length = distance(leftPos, rightPos)
-        
-        if length < 0.005 {
-            return " index fingers"
-        }
-        
-        // Convert to more appropriate units based on distance
-        if length < 0.01 {
-            // Show in millimeters for small distances
-            return formatter.string(from: .init(value: Double(length * 1000), unit: UnitLength.millimeters))
-        } else if length < 1.0 {
-            // Show in centimeters for medium distances
-            return formatter.string(from: .init(value: Double(length * 100), unit: UnitLength.centimeters))
-        } else {
-            // Show in meters for large distances
-            return formatter.string(from: .init(value: Double(length), unit: UnitLength.meters))
-        }
-    }
-=======
         if length < 0.01 {
             return formatter.string(from: .init(value: Double(length * 1000), unit: UnitLength.millimeters))
         } else if length < 1.0 {
@@ -878,7 +749,6 @@ class MyEntities {
         let defaultDirection = SIMD3<Float>(0, 0, 1)
         let normalizedDirection = normalize(direction)
         
-        // Handle opposite directions
         if dot(defaultDirection, normalizedDirection) < -0.999 {
             return simd_quatf(angle: .pi, axis: [0, 1, 0])
         }
@@ -893,5 +763,4 @@ class MyEntities {
             return simd_quatf(angle: 0, axis: [0, 1, 0])
         }
     }
->>>>>>> Stashed changes
 }
