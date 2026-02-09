@@ -3,7 +3,7 @@
 //  3D Microscopy
 //
 //  Created by Future Lab XR1 on 7/8/25.
-//
+
 
 import SwiftUI
 import RealityKit
@@ -11,14 +11,21 @@ import ARKit
 import Combine
 
 
+// MARK: - Enums
 enum GestureMode: String, CaseIterable {
-    case none, drag, rotate, scale, measure, annotate, crop
+    case none, drag, rotate, scale, measure, annotate, crop, angle
 }
 
 @MainActor
 class AppModel: ObservableObject {
 
     @Published var gestureMode: GestureMode = .none
+// Josh's code from 17 Nov 2025:
+//    @Published var gestureMode: GestureMode = .none {
+//        didSet {
+//            myEntities.updateVisibilityForMode(gestureMode)
+//        }
+//    }
 
     let immersiveSpaceID = "ImmersiveSpace"
     enum ImmersiveSpaceState {
@@ -43,9 +50,7 @@ class AppModel: ObservableObject {
         cropPreviewEntity?.removeFromParent()
         cropPreviewEntity = nil
     }
-    
-    
-    
+
     //for on/off button
     @Published var isOn: Bool = false {
         didSet {
@@ -118,7 +123,7 @@ class AppModel: ObservableObject {
             fingerTipEntity?.setTransformMatrix(originFromIndex, relativeTo: nil)
             
             // MARK: - Pinch Detection for Measure and Annotate modes
-            if thumbJoint.isTracked && (gestureMode == .measure || gestureMode == .annotate) && isOn {
+            if thumbJoint.isTracked && (gestureMode == .measure || gestureMode == .annotate || gestureMode == .angle) && isOn {
                 let wristFromThumb = thumbJoint.anchorFromJointTransform
                 let originFromThumb = originFromWrist * wristFromThumb
                 
@@ -146,6 +151,8 @@ class AppModel: ObservableObject {
                     resultString = myEntities.getResultString()
                 case .annotate:
                     resultString = annotationManager.getAnnotationSummary()
+                case .angle:
+                    resultString = myEntities.getAngleResultString()
                 default:
                     resultString = ""
                 }
@@ -279,5 +286,104 @@ class AppModel: ObservableObject {
         let leftStatus = leftWasPinched ? "PINCHED" : String(format: "%.1fcm", leftPinchDistance * 100)
         let rightStatus = rightWasPinched ? "PINCHED" : String(format: "%.1fcm", rightPinchDistance * 100)
         return "L: \(leftStatus) | R: \(rightStatus)"
+    }
+
+    // MARK: - Unused Angle Measurement (Consider removing)
+    
+    private func handleLeftHandPinch(currentDistance: Float,
+                                    indexPosition: SIMD3<Float>,
+                                    now: Date) {
+        let isPinched = currentDistance < pinchThreshold
+        
+        if !leftWasPinched && isPinched {
+            switch gestureMode {
+            case .measure:
+                handleLeftPinch()
+            case .annotate:
+                handleAnnotationPinch(at: indexPosition)
+            case .angle:
+                handleAngleLeftPinch(at: indexPosition)
+            default:
+                break
+            }
+            lastPinchTime = now
+        }
+        
+        leftWasPinched = isPinched
+        leftPinchDistance = currentDistance
+    }
+
+    // In handleRightHandPinch method, add angle case:
+    private func handleRightHandPinch(currentDistance: Float, now: Date) {
+        let isPinched = currentDistance < pinchThreshold
+        
+        if !rightWasPinched && isPinched {
+            switch gestureMode {
+            case .measure:
+                handleRightPinch()
+            case .annotate:
+                handleAnnotationRemove()
+            case .angle:
+                handleAngleRightPinch()
+            default:
+                break
+            }
+            lastPinchTime = now
+        }
+        
+        rightWasPinched = isPinched
+        rightPinchDistance = currentDistance
+    }
+
+    // Replace the existing handleAngleLeftPinch method with this:
+    private func handleAngleLeftPinch(at position: SIMD3<Float>) {
+        // Left pinch: Place the reference line using current finger positions
+        guard let leftPos = myEntities.fingerTips[.left]?.position,
+              let rightPos = myEntities.fingerTips[.right]?.position else {
+            print("⚠️ Cannot get finger positions")
+            return
+        }
+        
+        guard isTracked(leftPos), isTracked(rightPos) else {
+            print("⚠️ Hands not tracked")
+            return
+        }
+        
+        // Place a reference line between both hands
+        myEntities.placeAngleReferenceLine(leftPos: leftPos, rightPos: rightPos)
+    }
+
+    private func handleAngleRightPinch() {
+        // Right pinch: Complete the angle measurement or remove last
+        if myEntities.hasActiveAngleReference {
+            // If there's an active reference line, complete the measurement
+            guard let rightPos = myEntities.fingerTips[.right]?.position else {
+                return
+            }
+            
+            guard isTracked(rightPos) else {
+                return
+            }
+            
+            // Use right hand position to complete the angle
+            myEntities.completeAngleWithRightHand(rightPos: rightPos)
+        } else {
+            // If no active reference, remove the last completed angle
+            myEntities.removeLastAngle()
+        }
+    }
+
+    // Make sure you have this helper method (should already exist):
+    private func isTracked(_ position: SIMD3<Float>) -> Bool {
+        let trackingThreshold: Float = -999
+        return position.x > trackingThreshold &&
+               position.y > trackingThreshold &&
+               position.z > trackingThreshold
+    }
+
+    // Add public methods for angle management:
+    func clearAllAngles() {
+        myEntities.clearAllAngles()
+        print("🧹 All angles cleared")
     }
 }
