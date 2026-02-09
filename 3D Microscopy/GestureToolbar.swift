@@ -30,9 +30,7 @@ struct GestureToolbar: View {
                     
                     //if presses measure enables hand tracking
                     let wasOn = appModel.isOn
-                    //appModel.isOn = (mode == .measure || mode == .annotate)
-
-                    appModel.isOn = (mode == .measure || mode == .annotate || mode == .angle)
+                    appModel.isOn = (mode == .measure || mode == .annotate)
                     
                     if(mode == .measure && numMeasured == 0) {
                         openWindow(id:"TutorialView")
@@ -63,8 +61,6 @@ struct GestureToolbar: View {
                             Image(systemName: "plus.magnifyingglass") //icons for every gesture
                         case .measure:
                             Image(systemName: "ruler")
-                        case .angle:
-                            Image(systemName: "arrow.triangle.2.circlepath")
                         case .annotate:
                             Image(systemName: "note.text")
                         case .crop:
