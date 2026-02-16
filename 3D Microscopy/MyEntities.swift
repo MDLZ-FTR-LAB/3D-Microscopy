@@ -94,152 +94,6 @@ struct MeasurementLine {
     }
 }
 
-//// MARK: - AngleMeasurement
-//
-//struct AngleMeasurement {
-//    let id: UUID
-//    let entity: Entity
-//    let pivotPosition: SIMD3<Float>
-//    let firstRayPosition: SIMD3<Float>
-//    let secondRayPosition: SIMD3<Float>
-//    let angleInDegrees: Float
-//    let timestamp: Date
-//    
-//    init(pivot: SIMD3<Float>, firstRay: SIMD3<Float>, secondRay: SIMD3<Float>) {
-//        self.id = UUID()
-//        self.pivotPosition = pivot
-//        self.firstRayPosition = firstRay
-//        self.secondRayPosition = secondRay
-//        self.timestamp = Date()
-//        
-//        // Calculate angle
-//        let vector1 = normalize(firstRay - pivot)
-//        let vector2 = normalize(secondRay - pivot)
-//        let dotProduct = dot(vector1, vector2)
-//        let angleRadians = acos(max(-1.0, min(1.0, dotProduct)))
-//        self.angleInDegrees = angleRadians * 180.0 / .pi
-//        
-//        // Create container
-//        let containerEntity = Entity()
-//        
-//        // Create first ray line
-//        let ray1Entity = Self.createRayLine(from: pivot, to: firstRay, color: .systemPurple)
-//        
-//        // Create second ray line
-//        let ray2Entity = Self.createRayLine(from: pivot, to: secondRay, color: .systemPurple)
-//        
-//        // Create pivot point sphere
-//        let pivotEntity = Entity()
-//        pivotEntity.position = pivot
-//        pivotEntity.components.set(ModelComponent(
-//            mesh: .generateSphere(radius: 0.008),
-//            materials: [SimpleMaterial(color: .systemOrange, roughness: 0.2, isMetallic: false)]
-//        ))
-//        
-//        // Create arc to visualize angle
-//        let arcEntity = Self.createAngleArc(
-//            pivot: pivot,
-//            firstRay: firstRay,
-//            secondRay: secondRay,
-//            angleRadians: angleRadians
-//        )
-//        
-//        // Create text label
-//        let textEntity = Entity()
-//        let labelPosition = pivot + SIMD3<Float>(0, 0.05, 0)
-//        textEntity.position = labelPosition
-//        
-//        let angleText = String(format: "%.1f°", angleInDegrees)
-//        let textMesh = MeshResource.generateText(
-//            angleText,
-//            extrusionDepth: 0.001,
-//            font: .systemFont(ofSize: 0.025, weight: .bold),
-//            containerFrame: .zero,
-//            alignment: .center,
-//            lineBreakMode: .byWordWrapping
-//        )
-//        
-//        textEntity.components.set(ModelComponent(
-//            mesh: textMesh,
-//            materials: [SimpleMaterial(color: .systemYellow, roughness: 0.1, isMetallic: false)]
-//        ))
-//        textEntity.components.set(BillboardComponent())
-//        
-//        // Assemble
-//        containerEntity.addChild(ray1Entity)
-//        containerEntity.addChild(ray2Entity)
-//        containerEntity.addChild(pivotEntity)
-//        containerEntity.addChild(arcEntity)
-//        containerEntity.addChild(textEntity)
-//        
-//        self.entity = containerEntity
-//    }
-//    
-//    private static func createRayLine(from start: SIMD3<Float>, to end: SIMD3<Float>, color: UIColor) -> Entity {
-//        let lineEntity = Entity()
-//        let distance = simd.distance(start, end)
-//        let center = (start + end) / 2
-//        
-//        lineEntity.position = center
-//        lineEntity.components.set(ModelComponent(
-//            mesh: .generateBox(
-//                width: 0.004,
-//                height: 0.004,
-//                depth: distance,
-//                cornerRadius: 0.001
-//            ),
-//            materials: [SimpleMaterial(color: color, roughness: 0.2, isMetallic: false)]
-//        ))
-//        
-//        lineEntity.look(at: start, from: center, relativeTo: nil)
-//        lineEntity.components.set(OpacityComponent(opacity: 0.9))
-//        
-//        return lineEntity
-//    }
-//    
-//    private static func createAngleArc(
-//        pivot: SIMD3<Float>,
-//        firstRay: SIMD3<Float>,
-//        secondRay: SIMD3<Float>,
-//        angleRadians: Float
-//    ) -> Entity {
-//        let arcEntity = Entity()
-//        
-//        // Create a simple arc visualization using multiple small spheres
-//        let arcRadius: Float = 0.03
-//        let numSegments = max(3, Int(angleRadians * 10))
-//        
-//        let vector1 = normalize(firstRay - pivot)
-//        let vector2 = normalize(secondRay - pivot)
-//        
-//        for i in 0...numSegments {
-//            let t = Float(i) / Float(numSegments)
-//            let angle = angleRadians * t
-//            
-//            // Create rotation axis
-//            let rotationAxis = normalize(cross(vector1, vector2))
-//            
-//            // Rotate vector1 around the axis
-//            let rotation = simd_quatf(angle: angle, axis: rotationAxis)
-//            let direction = rotation.act(vector1)
-//            
-//            let pointPosition = pivot + direction * arcRadius
-//            
-//            let sphere = Entity()
-//            sphere.position = pointPosition
-//            sphere.components.set(ModelComponent(
-//                mesh: .generateSphere(radius: 0.003),
-//                materials: [SimpleMaterial(color: .systemYellow, roughness: 0.3, isMetallic: false)]
-//            ))
-//            
-//            arcEntity.addChild(sphere)
-//        }
-//        
-//        return arcEntity
-//    }
-//}
-
-// MARK: - MyEntities
 @MainActor
 class MyEntities {
     let root = Entity()
@@ -250,25 +104,8 @@ class MyEntities {
     // Storage for placed measurements
     private var placedMeasurements: [MeasurementLine] = []
     
-//    private var angleFirstRayStart: SIMD3<Float>?  // Pivot point (left hand)
-//    private var angleFirstRayEnd: SIMD3<Float>?    // First ray endpoint (right hand)
-//    private var angleReferenceEntity: Entity?
-//    private var tempAngleEntities: [Entity] = []
-//    
-//    var angleCount: Int {
-//        return placedAngles.count
-//    }
-    
     // Settings
-    var maxStoredMeasurements: Int = 20
-    
-//    // MARK: - Constants
-//    
-//    private static let offscreenPosition = SIMD3<Float>(-1000, -1000, -1000)
-//    private static let minMeasurementDistance: Float = 0.005
-//    private static let trackingThreshold: Float = -999
-    
-    // MARK: - Initialization
+    var maxStoredMeasurements: Int = 20 // Limit to prevent performance issues
     
     init() {
         // Create arrow-shaped finger tip indicators
@@ -300,7 +137,6 @@ class MyEntities {
         root.addChild(resultBoardEntity)
     }
     
-//    func update(for mode: GestureMode = .measure) {
     //sdound
     func playSystemClick(_ num: Int = 1) {
         if(num == 1){
@@ -319,175 +155,6 @@ class MyEntities {
         let leftPos = leftTip.position
         let rightPos = rightTip.position
         
-//        guard isTracked(leftPos), isTracked(rightPos) else {
-//            hideCurrentLineAndBoard()
-//            return
-//        }
-//        
-//        switch mode {
-//        case .measure, .angle:
-//            updateMeasurementLine(leftPos: leftPos, rightPos: rightPos, mode: mode)
-//        case .annotate, .none, .drag, .rotate, .scale, .crop:
-//            hideCurrentLineAndBoard()
-//        }
-//        
-//        updateArrowOrientations()
-//    }
-//    
-//    // MARK: - Angle Measurement Methods
-//    
-//    var hasActiveAngleReference: Bool {
-//        return angleFirstRayStart != nil && angleFirstRayEnd != nil
-//    }
-//
-//    func placeAngleReferenceLine(leftPos: SIMD3<Float>, rightPos: SIMD3<Float>) {
-//        // Clear any existing reference line
-//        clearAngleReference()
-//        
-//        // Store the STATIC reference line positions
-//        angleFirstRayStart = leftPos
-//        angleFirstRayEnd = rightPos
-//        
-//        // Create visual representation of the FIRST RAY (reference line)
-//        let referenceEntity = Entity()
-//        let distance = simd.distance(leftPos, rightPos)
-//        let center = (leftPos + rightPos) / 2
-//        
-//        referenceEntity.position = center
-//        referenceEntity.components.set(ModelComponent(
-//            mesh: .generateBox(
-//                width: 0.005,
-//                height: 0.005,
-//                depth: distance,
-//                cornerRadius: 0.001
-//            ),
-//            materials: [SimpleMaterial(color: .systemBlue, roughness: 0.2, isMetallic: false)]
-//        ))
-//        
-//        referenceEntity.look(at: leftPos, from: center, relativeTo: nil)
-//        referenceEntity.components.set(OpacityComponent(opacity: 0.9))
-//        
-//        // Add markers at endpoints
-//        let pivotMarker = Entity()
-//        pivotMarker.position = leftPos
-//        pivotMarker.components.set(ModelComponent(
-//            mesh: .generateSphere(radius: 0.012),
-//            materials: [SimpleMaterial(color: .systemRed, roughness: 0.2, isMetallic: false)]
-//        ))
-//        
-//        let endMarker = Entity()
-//        endMarker.position = rightPos
-//        endMarker.components.set(ModelComponent(
-//            mesh: .generateSphere(radius: 0.008),
-//            materials: [SimpleMaterial(color: .systemBlue, roughness: 0.2, isMetallic: false)]
-//        ))
-//        
-//        let container = Entity()
-//        container.addChild(referenceEntity)
-//        container.addChild(pivotMarker)
-//        container.addChild(endMarker)
-//        
-//        root.addChild(container)
-//        angleReferenceEntity = container
-//        tempAngleEntities.append(container)
-//        
-//        playSystemClick(1)
-//        print("🔵 First ray placed - Pivot: \(leftPos), Ray end: \(rightPos)")
-//    }
-//
-//    func completeAngleWithRightHand(rightPos: SIMD3<Float>) {
-//        guard let pivot = angleFirstRayStart,
-//              let firstRayEnd = angleFirstRayEnd else {
-//            print("⚠️ No reference line set")
-//            return
-//        }
-//        
-//        let angle = AngleMeasurement(
-//            pivot: pivot,
-//            firstRay: firstRayEnd,
-//            secondRay: rightPos
-//        )
-//        
-//        root.addChild(angle.entity)
-//        placedAngles.append(angle)
-//        
-//        clearAngleReference()
-//        
-//        if placedAngles.count > maxStoredMeasurements {
-//            let oldest = placedAngles.removeFirst()
-//            oldest.entity.removeFromParent()
-//        }
-//        
-//        playSystemClick(1)
-//        print("✅ Angle measurement complete: \(String(format: "%.1f°", angle.angleInDegrees))")
-//    }
-//
-//    func clearAngleReference() {
-//        angleFirstRayStart = nil
-//        angleFirstRayEnd = nil
-//        angleReferenceEntity?.removeFromParent()
-//        angleReferenceEntity = nil
-//        clearTempAngleEntities()
-//    }
-//
-//    private func clearTempAngleEntities() {
-//        tempAngleEntities.forEach { $0.removeFromParent() }
-//        tempAngleEntities.removeAll()
-//    }
-//
-//    func removeLastAngle() {
-//        if hasActiveAngleReference {
-//            clearAngleReference()
-//            playSystemClick(2)
-//            print("❌ Cancelled angle reference line")
-//            return
-//        }
-//        
-//        guard let lastAngle = placedAngles.popLast() else {
-//            print("No angles to remove")
-//            return
-//        }
-//        lastAngle.entity.removeFromParent()
-//        playSystemClick(2)
-//        print("🗑️ Last angle removed")
-//    }
-//
-//    func clearAllAngles() {
-//        clearAngleReference()
-//        placedAngles.forEach { $0.entity.removeFromParent() }
-//        placedAngles.removeAll()
-//        print("🧹 All angles cleared")
-//    }
-//
-//    func getAllAngles() -> [AngleMeasurement] {
-//        return placedAngles
-//    }
-//
-//    func getAngleResultString() -> String {
-//        if hasActiveAngleReference {
-//            return "Right pinch to place second ray ➡️"
-//        }
-//        
-//        let count = placedAngles.count
-//        if count == 0 {
-//            return "Left pinch: define first ray"
-//        } else if count == 1 {
-//            return "1 angle measured"
-//        } else {
-//            return "\(count) angles measured"
-//        }
-//    }
-//
-//    private func setAngleVisibility(_ isVisible: Bool) {
-//        placedAngles.forEach { $0.entity.isEnabled = isVisible }
-//        tempAngleEntities.forEach { $0.isEnabled = isVisible }
-//    }
-//    
-//    // MARK: - Measurement Management
-//    
-//    func placeMeasurement() {
-//        guard let leftPos = fingerTips[.left]?.position,
-//              let rightPos = fingerTips[.right]?.position else {
         let isLeftTracked = leftPos.x > -999 && leftPos.y > -999 && leftPos.z > -999
         let isRightTracked = rightPos.x > -999 && rightPos.y > -999 && rightPos.z > -999
         
@@ -539,7 +206,6 @@ class MyEntities {
             return
         }
         
-//        guard isTracked(leftPos), isTracked(rightPos) else {
         let leftPos = leftTip.position
         let rightPos = rightTip.position
         
@@ -552,7 +218,6 @@ class MyEntities {
         }
         
         let length = distance(leftPos, rightPos)
-//        guard length > Self.minMeasurementDistance else {
         guard length > 0.005 else {
             print("Cannot place measurement: distance too small (\(length)m)")
             return
@@ -561,6 +226,21 @@ class MyEntities {
         // Create new measurement with text label
         let measurement = MeasurementLine(leftPos: leftPos, rightPos: rightPos)
         
+        // Create arrow-shaped finger tip indicators
+        //let leftArr = Self.createArrowIndicator(color: .white)
+       // let rightArr = Self.createArrowIndicator(color: .white)
+        
+        // Position them off-screen initially so they don't appear at origin
+        //leftArr.position = SIMD3<Float>(-1000, -1000, -1000)
+       // rightArr.position = SIMD3<Float>(-1000, -1000, -1000)
+        
+       // fingerTips = [
+       //     .left: leftArr,
+          //  .right: rightArr
+       // ]
+        
+      //  fingerTips.values.forEach { root.addChild($0) }
+       //
         // Add to scene
         root.addChild(measurement.entity)
         
@@ -585,7 +265,7 @@ class MyEntities {
             return
         }
         lastMeasurement.entity.removeFromParent()
-
+        
         //play delete sound
         playSystemClick(2)
     
@@ -603,87 +283,11 @@ class MyEntities {
         return placedMeasurements
     }
     
-
     /// Gets measurement count
     var measurementCount: Int {
         return placedMeasurements.count
     }
     
-//    func getMeasurementStats() -> (count: Int, average: Float, min: Float, max: Float)? {
-//        guard !placedMeasurements.isEmpty else { return nil }
-//        
-//        let distances = placedMeasurements.map { $0.distance }
-//        let sum = distances.reduce(0, +)
-//        let average = sum / Float(distances.count)
-//        let min = distances.min() ?? 0
-//        let max = distances.max() ?? 0
-//        
-//        return (count: distances.count, average: average, min: min, max: max)
-//    }
-//    
-//    // MARK: - Annotation Management
-//    
-//    func addAnnotation(_ annotation: AnnotationNote) {
-//        root.addChild(annotation.entity)
-//        annotations[annotation.id] = annotation.entity
-//        print("Added annotation to scene: \(annotation.id)")
-//    }
-//    
-//    func removeAnnotation(id: UUID) {
-//        guard let entity = annotations[id] else {
-//            print("Annotation not found: \(id)")
-//            return
-//        }
-//        entity.removeFromParent()
-//        annotations.removeValue(forKey: id)
-//        print("Removed annotation from scene: \(id)")
-//    }
-//    
-//    func clearAllAnnotations() {
-//        annotations.values.forEach { $0.removeFromParent() }
-//        annotations.removeAll()
-//        print("Cleared all annotations from scene")
-//    }
-//    
-//    var sceneAnnotationCount: Int {
-//        return annotations.count
-//    }
-//    
-//    // MARK: - Mode-Based Visibility
-//    
-//    func updateVisibilityForMode(_ mode: GestureMode) {
-//        switch mode {
-//        case .measure:
-//            setMeasurementVisibility(true)
-//            setAngleVisibility(false)
-//            setFingerTipVisibility(true)
-//            
-//        case .angle:
-//            setMeasurementVisibility(false)
-//            setAngleVisibility(true)
-//            setFingerTipVisibility(true)
-//            
-//        case .annotate:
-//            setMeasurementVisibility(false)
-//            setAngleVisibility(false)
-//            setFingerTipVisibility(true)
-//            
-//        case .none, .drag, .rotate, .scale, .crop:
-//            setMeasurementVisibility(false)
-//            setAngleVisibility(false)
-//            setFingerTipVisibility(false)
-//        }
-//    }
-//    
-//    // MARK: - Display and Formatting
-//    
-//    func getResultString() -> String {
-//        guard let leftPos = fingerTips[.left]?.position,
-//              let rightPos = fingerTips[.right]?.position else {
-//            return "No entities"
-//        }
-//        
-//        guard isTracked(leftPos), isTracked(rightPos) else {
     // MARK: - Formatting and Display
     
     func getResultString() -> String {
