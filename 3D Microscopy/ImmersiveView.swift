@@ -20,7 +20,7 @@ struct ImmersiveView: View {
     
     // Add a state variable to force RealityView updates
     @State private var updateTrigger: Bool = false
-    @State private var scaleStart: SIMD3<Float>? = nil // Isabella
+    @State private var scaleStart: SIMD3<Float>? = nil
     
     var body: some View {
         gestureWrapper(for: modelEntity) {
@@ -201,11 +201,6 @@ struct ImmersiveView: View {
         case .scale:
             content().gesture(
                 MagnificationGesture().onChanged { value in
-                    // Roshni's code below:
-//                    if let entity = entity {
-//                        entity.transform.scale = [Float(value), Float(value), Float(value)]
-//                    }
-                    // Isabella's code below:
                     guard let entity = entity else { return }
 
                     // Capture the scale once per pinch gesture
@@ -226,27 +221,8 @@ struct ImmersiveView: View {
             
         case .measure:
             content()
-                .gesture(
-                    // Single tap to place measurement
-                    TapGesture()
-                        .onEnded { _ in
-                            appModel.myEntities.placeMeasurement()
-                        }
-                )
-                .gesture(
-                    // Double tap to remove last measurement
-                    TapGesture(count: 2)
-                        .onEnded { _ in
-                            appModel.myEntities.removeLastMeasurement()
-                        }
-                )
-                .gesture(
-                    // Long press to clear all measurements
-                    LongPressGesture(minimumDuration: 1.0)
-                        .onEnded { _ in
-                            appModel.myEntities.clearAllMeasurements()
-                        }
-                )
+            // Just use content()!! Adding .gesture() will make a second line appear.
+
             
         case .annotate:
             content()
