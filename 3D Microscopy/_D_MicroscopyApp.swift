@@ -43,27 +43,5 @@ struct _D_MicroscopyApp: App {
             TutorialView()
                 .environmentObject(appModel)
         }
-
-        // Annotation tutorial
-        WindowGroup(id: "AnnotationTutorialView") {
-            AnnotationTutorialView()
-                .environmentObject(appModel)
-        }
-
-        // Annotation text input window
-        WindowGroup(id: "AnnotationInput") {
-            AnnotationInputView(annotationManager: appModel.annotationManager)
-                .environmentObject(appModel)
-        }
-        .windowStyle(.plain)
-        .defaultSize(width: 450, height: 500)
-
-        // Annotation controls overlay
-        WindowGroup(id: "AnnotationControls") {
-            AnnotationControlsView(annotationManager: appModel.annotationManager)
-                .environmentObject(appModel)
-        }
-        .windowStyle(.plain)
-        .defaultSize(width: 200, height: 150)
     }
 }

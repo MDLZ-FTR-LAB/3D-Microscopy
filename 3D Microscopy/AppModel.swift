@@ -12,7 +12,7 @@ import Combine
 
 
 enum GestureMode: String, CaseIterable {
-    case none, drag, rotate, scale, measure, annotate, crop
+    case none, drag, rotate, scale, measure
 }
 
 @MainActor
@@ -31,21 +31,6 @@ class AppModel: ObservableObject {
     @Published var availableModels: [URL] = []
     
     
-    // Crop-specific properties
-    @Published var cropPreviewEntity: ModelEntity?
-    @Published var isDrawingCropLine = false
-    @Published var cropStartPoint: SIMD3<Float>?
-    @Published var cropEndPoint: SIMD3<Float>?
-    var cancellables: Set<AnyCancellable> = []
-
-
-    func cleanupCropPreview() {
-        cropPreviewEntity?.removeFromParent()
-        cropPreviewEntity = nil
-    }
-    
-    
-    
     //for on/off button
     @Published var isOn: Bool = false {
         didSet {
@@ -58,11 +43,7 @@ class AppModel: ObservableObject {
     private var handTrackingProvider = HandTrackingProvider()
     @Published var resultString: String = ""
     let myEntities = MyEntities()
-    
-    // MARK: - Annotation System
-    @Published var annotationManager = AnnotationManager()
-    @Published var pendingAnnotationPosition: SIMD3<Float>?
-    
+
     // MARK: - Pinch Detection Properties
     private var leftPinchDistance: Float = 0
     private var rightPinchDistance: Float = 0
@@ -117,8 +98,8 @@ class AppModel: ObservableObject {
             let fingerTipEntity = myEntities.fingerTips[handAnchor.chirality]
             fingerTipEntity?.setTransformMatrix(originFromIndex, relativeTo: nil)
             
-            // MARK: - Pinch Detection for Measure and Annotate modes
-            if thumbJoint.isTracked && (gestureMode == .measure || gestureMode == .annotate) && isOn {
+            // MARK: - Pinch Detection for Measure mode
+            if thumbJoint.isTracked && (gestureMode == .measure) && isOn {
                 let wristFromThumb = thumbJoint.anchorFromJointTransform
                 let originFromThumb = originFromWrist * wristFromThumb
                 
@@ -144,8 +125,6 @@ class AppModel: ObservableObject {
                 switch gestureMode {
                 case .measure:
                     resultString = myEntities.getResultString()
-                case .annotate:
-                    resultString = annotationManager.getAnnotationSummary()
                 default:
                     resultString = ""
                 }
@@ -169,9 +148,6 @@ class AppModel: ObservableObject {
                 if gestureMode == .measure {
                     // Left hand just pinched - place measurement
                     handleLeftPinch()
-                } else if gestureMode == .annotate {
-                    // Left hand just pinched - create annotation
-                    handleAnnotationPinch(at: indexPosition)
                 }
                 lastPinchTime = now
             }
@@ -186,9 +162,6 @@ class AppModel: ObservableObject {
                 if gestureMode == .measure {
                     // Right hand just pinched - remove last measurement
                     handleRightPinch()
-                } else if gestureMode == .annotate {
-                    // Right hand just pinched - remove last annotation
-                    handleAnnotationRemove()
                 }
                 lastPinchTime = now
             }
@@ -209,41 +182,6 @@ class AppModel: ObservableObject {
         print("Last measurement removed via right hand pinch")
     }
     
-    // MARK: - Annotation Methods
-    private func handleAnnotationPinch(at position: SIMD3<Float>) {
-        // Store the position for annotation creation and trigger text input
-        pendingAnnotationPosition = position
-        print("Annotation pinch detected at position: \(position)")
-    }
-    
-    private func handleAnnotationRemove() {
-        annotationManager.removeLastAnnotation()
-        print("Last annotation removed via right hand pinch")
-    }
-    
-    /// Create annotation at pending position with given text
-    func createAnnotationWithText(_ text: String) {
-        guard let position = pendingAnnotationPosition else {
-            print("No pending annotation position")
-            return
-        }
-        
-        let annotation = annotationManager.createAnnotation(at: position, text: text)
-        
-        // Add annotation entity to scene
-        //myEntities.addAnnotation(annotation)
-        
-        // Clear pending position
-        pendingAnnotationPosition = nil
-        
-        print("Annotation created with text: '\(text)' at position: \(position)")
-    }
-    
-    /// Cancel pending annotation creation
-    func cancelPendingAnnotation() {
-        pendingAnnotationPosition = nil
-    }
-    
     // MARK: - Public Methods for UI Controls
     func placeMeasurement() {
         myEntities.placeMeasurement()
@@ -258,22 +196,6 @@ class AppModel: ObservableObject {
         print("🧹 All measurements cleared")
     }
     
-    func placeAnnotation(at position: SIMD3<Float>, text: String = "") {
-        let annotation = annotationManager.createAnnotation(at: position, text: text)
-        //myEntities.addAnnotation(annotation)
-        print("Annotation placed at: \(position)")
-    }
-    
-    func removeLastAnnotation() {
-        annotationManager.removeLastAnnotation()
-    }
-    
-    func clearAllAnnotations() {
-        annotationManager.clearAllAnnotations()
-        //myEntities.clearAllAnnotations()
-        print("🧹 All annotations cleared")
-    }
-    
     // MARK: - Debug Methods
     func getPinchStatus() -> String {
         let leftStatus = leftWasPinched ? "PINCHED" : String(format: "%.1fcm", leftPinchDistance * 100)
@@ -281,3 +203,4 @@ class AppModel: ObservableObject {
         return "L: \(leftStatus) | R: \(rightStatus)"
     }
 }
+
