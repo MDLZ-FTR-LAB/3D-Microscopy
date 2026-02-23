@@ -11,7 +11,6 @@ struct GestureToolbar: View {
     @EnvironmentObject var appModel: AppModel
     @Environment(\.openWindow) private var openWindow
     @State private var numMeasured = 0
-    @State private var numAnnotated = 0
     
     var body: some View {
         HStack(spacing: 16) {
@@ -19,27 +18,13 @@ struct GestureToolbar: View {
                 Button {
                     appModel.gestureMode = mode
                     
-                    // Clean up crop preview when switching modes
-                    if mode != .crop {
-                        appModel.cleanupCropPreview()
-                        appModel.isDrawingCropLine = false
-                        appModel.cropStartPoint = nil
-                        appModel.cropEndPoint = nil
-                    }
-                    
-                    
                     //if presses measure enables hand tracking
                     let wasOn = appModel.isOn
-                    appModel.isOn = (mode == .measure || mode == .annotate)
+                    appModel.isOn = (mode == .measure)
                     
                     if(mode == .measure && numMeasured == 0) {
                         openWindow(id:"TutorialView")
                         numMeasured += 1
-                    }
-                    
-                    if(mode == .annotate && numAnnotated == 0) {
-                        openWindow(id:"AnnotationTutorialView")
-                        numAnnotated += 1
                     }
                     
                     // reset finger positions
@@ -61,10 +46,6 @@ struct GestureToolbar: View {
                             Image(systemName: "plus.magnifyingglass") //icons for every gesture
                         case .measure:
                             Image(systemName: "ruler")
-                        case .annotate:
-                            Image(systemName: "note.text")
-                        case .crop:
-                            Image(systemName: "scissors")
                         }
                         
                         Text(mode.rawValue.capitalized)
@@ -83,3 +64,4 @@ struct GestureToolbar: View {
         .cornerRadius(20)
     }
 }
+
