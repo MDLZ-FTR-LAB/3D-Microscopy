@@ -69,7 +69,7 @@ struct ContentView: View {
         }
     }
 
-//helper funcyions for loading models
+//helper functions for loading models
     
     private func loadAvailableModels() {
         let docsURL = FileManager.default

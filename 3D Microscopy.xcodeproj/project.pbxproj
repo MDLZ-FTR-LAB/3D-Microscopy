@@ -241,12 +241,14 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "$(TARGET_NAME)/Info.plist";
 				INFOPLIST_KEY_NSCameraUsageDescription = "";
+				INFOPLIST_KEY_NSHandsTrackingUsageDescription = "Allow hand tracking so we can detect your fingertips and measure the distance between them.";
+				INFOPLIST_KEY_NSWorldSensingUsageDescription = "Allow world sensing so we can accurately position and measure objects in space.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = mdlz.com.Microscopyy3;
+				PRODUCT_BUNDLE_IDENTIFIER = mdlz.com.Microscopy3;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "xros xrsimulator";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -268,12 +270,14 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "$(TARGET_NAME)/Info.plist";
 				INFOPLIST_KEY_NSCameraUsageDescription = "";
+				INFOPLIST_KEY_NSHandsTrackingUsageDescription = "Allow hand tracking so we can detect your fingertips and measure the distance between them.";
+				INFOPLIST_KEY_NSWorldSensingUsageDescription = "Allow world sensing so we can accurately position and measure objects in space.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = mdlz.com.Microscopyy3;
+				PRODUCT_BUNDLE_IDENTIFIER = mdlz.com.Microscopy3;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "xros xrsimulator";
 				SWIFT_EMIT_LOC_STRINGS = YES;
