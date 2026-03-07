@@ -106,7 +106,14 @@ struct ImmersiveView: View {
             updateTrigger.toggle()
         }
         // Watch for gesture mode changes
-        .onChange(of: appModel.gestureMode) { _, _ in
+        .onChange(of: appModel.gestureMode) { _, newMode in
+            
+            if newMode == .angle {
+                appModel.myEntities.isAngleMode = true
+            } else {
+                appModel.myEntities.isAngleMode = false
+            }
+
             updateTrigger.toggle()
         }
     }

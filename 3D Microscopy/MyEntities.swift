@@ -108,13 +108,13 @@ class MyEntities {
     var maxStoredMeasurements: Int = 20 // Limit to prevent performance issues
     
     // MARK: - Angle Measurement storage properties
-
     private var angleFirstLine: (start: SIMD3<Float>, end: SIMD3<Float>)?
     private var angleSecondLine: (start: SIMD3<Float>, end: SIMD3<Float>)?
-
     private var angleContainer = Entity()
     private var angleArcEntity: Entity?
     private var angleSphere: Entity?
+    var isAngleMode = false
+    private var angleTextEntity: Entity?
     
     // MARK: - init
     init() {
@@ -298,10 +298,18 @@ class MyEntities {
         guard isLeftTracked && isRightTracked else { return }
 
         if angleFirstLine == nil {
+            // Ensure previous angle is completely cleared
+            angleContainer.children.forEach { $0.removeFromParent() }
+            angleArcEntity = nil
+            angleSphere = nil
+            angleSecondLine = nil
+
             // FIRST LINE
             angleFirstLine = (leftPos, rightPos)
+
             createAngleLine(from: leftPos, to: rightPos)
             createAnchorSphere(at: rightPos)
+
             playSystemClick(1)
             return
         }
@@ -381,20 +389,72 @@ class MyEntities {
         angleArcEntity = arcContainer
         angleContainer.addChild(arcContainer)
     }
-    
+
     private func createAngleArc() {
         guard let first = angleFirstLine,
               let second = angleSecondLine else { return }
 
-        let v1 = normalize(first.start - first.end)
-        let v2 = normalize(second.end - second.start)
+        let pivot = first.end
 
+        // Direction vectors of the two lines
+        let v1 = normalize(first.start - pivot)
+        let v2 = normalize(second.end - pivot)
+
+        // Angle calculation
         let dotProduct = simd_dot(v1, v2)
         let angle = acos(max(-1.0, min(1.0, dotProduct)))
-
         let degrees = angle * 180 / .pi
 
-        // Create text label
+        // Compute plane normal
+        let planeNormal = normalize(simd_cross(v1, v2))
+
+        // If lines are nearly collinear, avoid instability
+        if simd_length(planeNormal) < 0.0001 { return }
+
+        // Tangent axis along first line
+        let tangent = normalize(v1)
+
+        // Bitangent axis within plane
+        let bitangent = normalize(simd_cross(planeNormal, tangent))
+
+        let radius: Float = 0.03
+        let segments = 32
+
+        // Remove old arc
+        angleArcEntity?.removeFromParent()
+
+        let arcContainer = Entity()
+
+        var previousPoint: SIMD3<Float>?
+
+        for i in 0...segments {
+
+            let t = Float(i) / Float(segments)
+            let theta = t * angle
+
+            // Generate point in the angle plane
+            let point =
+                pivot +
+                radius * cos(theta) * tangent +
+                radius * sin(theta) * bitangent
+
+            if let prev = previousPoint {
+                let segment = makeCylinderSegment(
+                    from: prev,
+                    to: point,
+                    radius: 0.0015,
+                    color: .orange
+                )
+                arcContainer.addChild(segment)
+            }
+
+            previousPoint = point
+        }
+
+        angleArcEntity = arcContainer
+        angleContainer.addChild(arcContainer)
+
+        // Create angle label
         let textMesh = MeshResource.generateText(
             String(format: "%.1f°", degrees),
             extrusionDepth: 0.001,
@@ -404,29 +464,41 @@ class MyEntities {
             lineBreakMode: .byWordWrapping
         )
 
-        let textEntity = ModelEntity(mesh: textMesh,
-                                      materials: [SimpleMaterial(color: .orange,
-                                                                 roughness: 0.1,
-                                                                 isMetallic: false)])
+        let textEntity = ModelEntity(
+            mesh: textMesh,
+            materials: [SimpleMaterial(color: .orange, roughness: 0.1, isMetallic: false)]
+        )
+        angleTextEntity = textEntity
 
-        textEntity.position = first.end + SIMD3<Float>(0, 0.03, 0)
+        textEntity.position = pivot + planeNormal * 0.03
         textEntity.components.set(BillboardComponent())
-        angleContainer.addChild(textEntity)
 
-        createAngleArc(center: first.end, angle: angle)
+        angleContainer.addChild(textEntity)
     }
     
     func resetCurrentAngle() {
-        angleContainer.children.forEach { $0.removeFromParent() }
+        // Remove everything in one step
+        angleContainer.removeFromParent()
+
+        // Recreate empty container
+        angleContainer = Entity()
+        root.addChild(angleContainer)
+
         angleFirstLine = nil
         angleSecondLine = nil
         angleSphere = nil
         angleArcEntity = nil
+
         playSystemClick(2)
     }
     // MARK: - Formatting and Display
     
     func getResultString() -> String {
+        if isAngleMode {
+            return ""   // hide bubble during angle mode
+        }
+        
+        // Bubble with lenght above line preview in measurement mode
         guard let leftTip = fingerTips[.left],
               let rightTip = fingerTips[.right] else { return "No entities" }
         
