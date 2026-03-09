@@ -16,7 +16,7 @@ struct _D_MicroscopyApp: App {
         }
         .windowStyle(.plain)
         
-        // Open immersive
+        // Open mixed reality view (no full immersion)
         ImmersiveSpace(id: appModel.immersiveSpaceID) {
             ImmersiveView()
                 .environmentObject(appModel)
