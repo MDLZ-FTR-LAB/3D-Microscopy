@@ -72,7 +72,6 @@ class AppModel: ObservableObject {
         
         for await update in handTrackingProvider.anchorUpdates {
             let handAnchor = update.anchor
-            let handType = handAnchor.chirality == .left ? "LEFT" : "RIGHT"
             
             if !handAnchor.isTracked {
                 continue
@@ -215,4 +214,3 @@ class AppModel: ObservableObject {
         return "L: \(leftStatus) | R: \(rightStatus)"
     }
 }
-

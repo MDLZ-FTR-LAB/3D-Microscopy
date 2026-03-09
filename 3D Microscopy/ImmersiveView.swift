@@ -199,7 +199,7 @@ struct ImmersiveView: View {
             
         case .measure:
             content()
-            // Just use content()!! Adding .gesture() will make a second line appear.
+            // Just use content(). Adding .gesture() will make a second line appear.
         
         case .angle:
             content()

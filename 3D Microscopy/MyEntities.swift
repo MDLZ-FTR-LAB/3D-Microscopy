@@ -268,7 +268,6 @@ class MyEntities {
         
         //play add sound
         playSystemClick(1)
-       
     }
     
     /// Removes the most recent measurement
@@ -281,7 +280,6 @@ class MyEntities {
         
         //play delete sound
         playSystemClick(2)
-    
     }
     
     /// Clears all placed measurements
@@ -427,7 +425,6 @@ class MyEntities {
         var previousPoint: SIMD3<Float>?
         
         for i in 0...segments {
-
             let t = Float(i) / Float(segments)
             let theta = t * angle
 

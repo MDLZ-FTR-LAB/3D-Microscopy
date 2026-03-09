@@ -133,7 +133,7 @@ public extension View {
 struct CustomGestures {
     static func createFullGesture(_ constrainedToAxis: RotationAxis3D, _ behavior: HandActivationBehavior) -> some Gesture {
         var sourceTransform: Transform?
-        var startMagnification: CGFloat? // Isabella - fix pinching starts at current size, no snapping size
+        var startMagnification: CGFloat? // fixed pinching starts at current size, no snapping size
 
         return DragGesture()
             .simultaneously(with: MagnifyGesture())

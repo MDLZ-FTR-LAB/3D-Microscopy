@@ -18,7 +18,7 @@ struct ContentView: View {
                 .font(.largeTitle)
                 .bold()
 
-            Text("🌌 Clicking 'Show Model' enters you into immersive view.\n🪐 Clicking 'Hide Model' returns you to mixed reality view.")
+            Text("\n📥 Tapping the 'Import Model File' button loads a new model to the list below.\n🍪 Clicking 'Show Model' displays the scanned model in your space, Mixed Reality (MR) style.\n📦 Please select the scanned model from the list below to load it before clicking 'Show Model'.")
             Button("Import Model File") {
                 showImporter = true
             }
@@ -27,8 +27,7 @@ struct ContentView: View {
             .foregroundColor(.white)
             .cornerRadius(10)
 
-            // This button toggles you into the immersive space above
-            ToggleImmersiveSpaceButton()
+            ShowModelButton()
                 .padding()
                 .background(Color.orange)
                 .foregroundColor(.white)
@@ -69,8 +68,7 @@ struct ContentView: View {
         }
     }
 
-//helper functions for loading models
-    
+    //helper functions for loading models
     private func loadAvailableModels() {
         let docsURL = FileManager.default
             .urls(for: .documentDirectory, in: .userDomainMask)
