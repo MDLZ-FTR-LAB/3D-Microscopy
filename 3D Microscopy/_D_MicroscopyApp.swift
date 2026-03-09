@@ -16,7 +16,7 @@ struct _D_MicroscopyApp: App {
         }
         .windowStyle(.plain)
         
-        // Open immersive
+        // Open mixed reality view (no full immersion)
         ImmersiveSpace(id: appModel.immersiveSpaceID) {
             ImmersiveView()
                 .environmentObject(appModel)
@@ -28,7 +28,7 @@ struct _D_MicroscopyApp: App {
                     appModel.immersiveSpaceState = .closed
                 }
         }
-        .immersionStyle(selection: .constant(.mixed), in: .mixed) // Isabella - changed `full` to `mixed` for video
+        .immersionStyle(selection: .constant(.mixed), in: .mixed) // changed `full` to `mixed`
         
         // Gesture toolbar
         WindowGroup(id: "GestureControlPanel") {
@@ -38,10 +38,11 @@ struct _D_MicroscopyApp: App {
         .windowStyle(.plain)
         .defaultSize(width: 1200, height: 100)
 
-        // Measurement tutorial
-        WindowGroup(id: "TutorialView") {
-            TutorialView()
-                .environmentObject(appModel)
+        // Measurement and angle tutorial
+        WindowGroup(id: "TutorialView", for: TutorialType.self) { $type in
+            if let type {
+                TutorialView(type: type)
+            }
         }
     }
 }

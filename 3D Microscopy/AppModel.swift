@@ -12,7 +12,7 @@ import Combine
 
 
 enum GestureMode: String, CaseIterable {
-    case none, drag, rotate, scale, measure
+    case none, drag, rotate, scale, measure, angle
 }
 
 @MainActor
@@ -72,7 +72,6 @@ class AppModel: ObservableObject {
         
         for await update in handTrackingProvider.anchorUpdates {
             let handAnchor = update.anchor
-            let handType = handAnchor.chirality == .left ? "LEFT" : "RIGHT"
             
             if !handAnchor.isTracked {
                 continue
@@ -98,8 +97,8 @@ class AppModel: ObservableObject {
             let fingerTipEntity = myEntities.fingerTips[handAnchor.chirality]
             fingerTipEntity?.setTransformMatrix(originFromIndex, relativeTo: nil)
             
-            // MARK: - Pinch Detection for Measure mode
-            if thumbJoint.isTracked && (gestureMode == .measure) && isOn {
+            // MARK: - Pinch Detection for Measure mode and Angle mode
+            if thumbJoint.isTracked && (gestureMode == .measure || gestureMode == .angle) && isOn {
                 let wristFromThumb = thumbJoint.anchorFromJointTransform
                 let originFromThumb = originFromWrist * wristFromThumb
                 
@@ -145,9 +144,13 @@ class AppModel: ObservableObject {
             let isPinched = currentDistance < pinchThreshold
             
             if !wasPinched && isPinched {
-                if gestureMode == .measure {
-                    // Left hand just pinched - place measurement
-                    handleLeftPinch()
+                switch gestureMode {
+                case .measure:
+                    handleLeftPinch() // add measurement/angle
+                case .angle:
+                    handleLeftAnglePinch(indexPosition)
+                default:
+                    break
                 }
                 lastPinchTime = now
             }
@@ -159,9 +162,13 @@ class AppModel: ObservableObject {
             let isPinched = currentDistance < pinchThreshold
             
             if !wasPinched && isPinched {
-                if gestureMode == .measure {
-                    // Right hand just pinched - remove last measurement
+                switch gestureMode {
+                case .measure:
                     handleRightPinch()
+                case .angle:
+                    myEntities.removeLastAngle() // remove measurement / reset angle
+                default:
+                    break
                 }
                 lastPinchTime = now
             }
@@ -182,6 +189,10 @@ class AppModel: ObservableObject {
         print("Last measurement removed via right hand pinch")
     }
     
+    private func handleLeftAnglePinch(_ indexPosition: SIMD3<Float>) {
+        myEntities.placeAnglePoint()
+        print("Angle point placed")
+    }
     // MARK: - Public Methods for UI Controls
     func placeMeasurement() {
         myEntities.placeMeasurement()
@@ -203,4 +214,3 @@ class AppModel: ObservableObject {
         return "L: \(leftStatus) | R: \(rightStatus)"
     }
 }
-

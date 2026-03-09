@@ -62,11 +62,13 @@ struct ImmersiveView: View {
             } attachments: {
                 // Attachment for floating result display
                 Attachment(id: "resultBoard") {
-                    Text(appModel.resultString)
-                        .monospacedDigit()
-                        .padding()
-                        .glassBackgroundEffect()
-                        .offset(y: -80)
+                    if appModel.gestureMode != .angle {
+                        Text(appModel.resultString)
+                            .monospacedDigit()
+                            .padding()
+                            .glassBackgroundEffect()
+                            .offset(y: -80)
+                    }
                 }
             }
         }
@@ -106,7 +108,16 @@ struct ImmersiveView: View {
             updateTrigger.toggle()
         }
         // Watch for gesture mode changes
-        .onChange(of: appModel.gestureMode) { _, _ in
+        .onChange(of: appModel.gestureMode) { _, newMode in
+            if newMode == .angle {
+                appModel.myEntities.isAngleMode = true
+                appModel.myEntities.showAngles()
+            }
+            else if newMode == .measure {
+                appModel.myEntities.isAngleMode = false
+                appModel.myEntities.showMeasurements()
+            }
+
             updateTrigger.toggle()
         }
     }
@@ -188,7 +199,10 @@ struct ImmersiveView: View {
             
         case .measure:
             content()
-            // Just use content()!! Adding .gesture() will make a second line appear.
+            // Just use content(). Adding .gesture() will make a second line appear.
+        
+        case .angle:
+            content()
             
         default:
             content() // No gesture

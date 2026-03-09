@@ -10,7 +10,9 @@ import SwiftUI
 struct GestureToolbar: View {
     @EnvironmentObject var appModel: AppModel
     @Environment(\.openWindow) private var openWindow
-    @State private var numMeasured = 0
+    // check to see which tutorial should show and whether it has been shown yet or not
+    @State private var measureTutorialShown = false
+    @State private var angleTutorialShown = false
     
     var body: some View {
         HStack(spacing: 16) {
@@ -20,11 +22,16 @@ struct GestureToolbar: View {
                     
                     //if presses measure enables hand tracking
                     let wasOn = appModel.isOn
-                    appModel.isOn = (mode == .measure)
+                    appModel.isOn = (mode == .measure || mode == .angle)
                     
-                    if(mode == .measure && numMeasured == 0) {
-                        openWindow(id:"TutorialView")
-                        numMeasured += 1
+                    if mode == .measure && !measureTutorialShown {
+                        openWindow(id: "TutorialView", value: TutorialType.measure)
+                        measureTutorialShown = true
+                    }
+
+                    if mode == .angle && !angleTutorialShown {
+                        openWindow(id: "TutorialView", value: TutorialType.angle)
+                        angleTutorialShown = true
                     }
                     
                     // reset finger positions
@@ -34,7 +41,7 @@ struct GestureToolbar: View {
                     }
                 } label: {
                     HStack {
-                        //icons
+                        //icons for every gesture
                         switch mode {
                         case .none:
                             Image(systemName: "hand.raised.slash")
@@ -43,9 +50,11 @@ struct GestureToolbar: View {
                         case .rotate:
                             Image(systemName: "arrow.clockwise")
                         case .scale:
-                            Image(systemName: "plus.magnifyingglass") //icons for every gesture
+                            Image(systemName: "plus.magnifyingglass")
                         case .measure:
                             Image(systemName: "ruler")
+                        case .angle:
+                            Image(systemName: "angle")
                         }
                         
                         Text(mode.rawValue.capitalized)
@@ -64,4 +73,3 @@ struct GestureToolbar: View {
         .cornerRadius(20)
     }
 }
-
