@@ -361,6 +361,7 @@ class MyEntities {
     }
     
     private func createAnchorSphere(at position: SIMD3<Float>) {
+        angleSphere?.removeFromParent() // protect against duplicate spheres
 
         let sphere = ModelEntity(
             mesh: .generateSphere(radius: 0.01),
@@ -515,8 +516,15 @@ class MyEntities {
     func removeLastAngle() {
         // If user is currently creating an angle, cancel it
         if angleFirstLine != nil && angleSecondLine == nil {
+            // Remove individual entities explicitly
+            angleSphere?.removeFromParent()
+            angleArcEntity?.removeFromParent()
+            angleTextEntity?.removeFromParent()
+
+            // Remove any remaining children (like the first line)
             angleContainer.children.forEach { $0.removeFromParent() }
 
+            // Reset state
             angleFirstLine = nil
             angleSecondLine = nil
             angleSphere = nil
