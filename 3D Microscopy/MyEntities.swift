@@ -92,6 +92,7 @@ struct MeasurementLine {
             return "\(formatter.string(from: NSNumber(value: distance)) ?? "0.00")m"
         }
     }
+    
 }
 
 @MainActor
@@ -298,6 +299,16 @@ class MyEntities {
     /// Gets measurement count
     var measurementCount: Int {
         return placedMeasurements.count
+    }
+    
+    func showMeasurements() {
+        for measurement in placedMeasurements {
+            measurement.entity.isEnabled = true
+        }
+
+        for angle in placedAngles {
+            angle.container.isEnabled = false
+        }
     }
     // MARK: - Angle Placement Logic
 
@@ -508,6 +519,16 @@ class MyEntities {
         last.container.removeFromParent()
 
         playSystemClick(2)
+    }
+    
+    func showAngles() {
+        for measurement in placedMeasurements {
+            measurement.entity.isEnabled = false
+        }
+
+        for angle in placedAngles {
+            angle.container.isEnabled = true
+        }
     }
     // MARK: - Formatting and Display
     
