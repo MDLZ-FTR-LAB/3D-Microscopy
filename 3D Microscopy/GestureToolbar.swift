@@ -54,7 +54,7 @@ struct GestureToolbar: View {
                         case .measure:
                             Image(systemName: "ruler")
                         case .angle:
-                            Image(systemName: "arrow.triangle.2.circlepath")
+                            Image(systemName: "angle")
                         }
                         
                         Text(mode.rawValue.capitalized)
