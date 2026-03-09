@@ -315,7 +315,7 @@ class MyEntities {
 
         if angleFirstLine == nil {
             // Ensure previous angle is completely cleared
-            angleContainer.children.removeAll()
+            angleContainer.children.forEach { $0.removeFromParent() }
             angleArcEntity = nil
             angleSphere = nil
             angleSecondLine = nil
@@ -373,38 +373,6 @@ class MyEntities {
         sphere.position = position
         angleSphere = sphere
         angleContainer.addChild(sphere)
-    }
-    
-    private func createAngleArc(center: SIMD3<Float>, angle: Float) {
-
-        let radius: Float = 0.03
-        let segments = 32
-
-        // Remove any previous arc entity if stored
-        angleArcEntity?.removeFromParent()
-
-        let arcContainer = Entity()
-
-        var previousPointWorld: SIMD3<Float>?
-        for i in 0...segments {
-            let t = Float(i) / Float(segments)
-            let theta = t * angle
-
-            let x = radius * cos(theta)
-            let z = radius * sin(theta)
-            let pointLocal = SIMD3<Float>(x, 0, z)
-            let pointWorld = center + pointLocal
-
-            if let prev = previousPointWorld {
-                // Create a thin cylinder between prev and pointWorld
-                let segmentEntity = makeCylinderSegment(from: prev, to: pointWorld, radius: 0.0015, color: .orange)
-                arcContainer.addChild(segmentEntity)
-            }
-            previousPointWorld = pointWorld
-        }
-
-        angleArcEntity = arcContainer
-        angleContainer.addChild(arcContainer)
     }
 
     private func createAngleArc() {
