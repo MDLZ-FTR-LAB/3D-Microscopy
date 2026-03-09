@@ -167,7 +167,7 @@ class AppModel: ObservableObject {
                 case .measure:
                     handleRightPinch()
                 case .angle:
-                    myEntities.resetCurrentAngle() // remove measurement / reset angle
+                    myEntities.removeLastAngle() // remove measurement / reset angle
                 default:
                     break
                 }

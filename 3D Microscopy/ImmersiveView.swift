@@ -62,11 +62,13 @@ struct ImmersiveView: View {
             } attachments: {
                 // Attachment for floating result display
                 Attachment(id: "resultBoard") {
-                    Text(appModel.resultString)
-                        .monospacedDigit()
-                        .padding()
-                        .glassBackgroundEffect()
-                        .offset(y: -80)
+                    if appModel.gestureMode != .angle {
+                        Text(appModel.resultString)
+                            .monospacedDigit()
+                            .padding()
+                            .glassBackgroundEffect()
+                            .offset(y: -80)
+                    }
                 }
             }
         }

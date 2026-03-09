@@ -108,6 +108,19 @@ class MyEntities {
     var maxStoredMeasurements: Int = 20 // Limit to prevent performance issues
     
     // MARK: - Angle Measurement storage properties
+    struct AngleMeasurement {
+        let id: UUID
+        let container: Entity
+        let degrees: Float
+        let timestamp: Date
+
+        init(container: Entity, degrees: Float) {
+            self.id = UUID()
+            self.container = container
+            self.degrees = degrees
+            self.timestamp = Date()
+        }
+    }
     private var angleFirstLine: (start: SIMD3<Float>, end: SIMD3<Float>)?
     private var angleSecondLine: (start: SIMD3<Float>, end: SIMD3<Float>)?
     private var angleContainer = Entity()
@@ -115,6 +128,9 @@ class MyEntities {
     private var angleSphere: Entity?
     var isAngleMode = false
     private var angleTextEntity: Entity?
+    
+    private var placedAngles: [AngleMeasurement] = []
+    var maxStoredAngles: Int = 20
     
     // MARK: - init
     init() {
@@ -299,7 +315,7 @@ class MyEntities {
 
         if angleFirstLine == nil {
             // Ensure previous angle is completely cleared
-            angleContainer.children.forEach { $0.removeFromParent() }
+            angleContainer.children.removeAll()
             angleArcEntity = nil
             angleSphere = nil
             angleSecondLine = nil
@@ -474,20 +490,46 @@ class MyEntities {
         textEntity.components.set(BillboardComponent())
 
         angleContainer.addChild(textEntity)
-    }
-    
-    func resetCurrentAngle() {
-        // Remove everything in one step
-        angleContainer.removeFromParent()
+        
+        // Store completed angle - so each angle becomes permananent and can store > 1 (up to 20)
+        let storedAngle = AngleMeasurement(container: angleContainer, degrees: degrees)
+        placedAngles.append(storedAngle)
 
-        // Recreate empty container
+        if placedAngles.count > maxStoredAngles {
+            let oldest = placedAngles.removeFirst()
+            oldest.container.removeFromParent()
+        }
+
+        // Prepare a fresh container for the next angle
         angleContainer = Entity()
         root.addChild(angleContainer)
 
+        // Reset state
         angleFirstLine = nil
         angleSecondLine = nil
         angleSphere = nil
         angleArcEntity = nil
+        angleTextEntity = nil
+    }
+    
+    func removeLastAngle() {
+        // If user is currently creating an angle, cancel it
+        if angleFirstLine != nil && angleSecondLine == nil {
+            angleContainer.children.forEach { $0.removeFromParent() }
+
+            angleFirstLine = nil
+            angleSecondLine = nil
+            angleSphere = nil
+            angleArcEntity = nil
+            angleTextEntity = nil
+
+            playSystemClick(2)
+            return
+        }
+
+        // Otherwise remove last stored angle
+        guard let last = placedAngles.popLast() else { return }
+        last.container.removeFromParent()
 
         playSystemClick(2)
     }
