@@ -309,6 +309,9 @@ class MyEntities {
         for angle in placedAngles {
             angle.container.isEnabled = false
         }
+        
+        // hide any incomplete (single line) angles
+        angleContainer.isEnabled = false
     }
     // MARK: - Angle Placement Logic
 
@@ -418,11 +421,11 @@ class MyEntities {
 
         // Remove old arc
         angleArcEntity?.removeFromParent()
-
+        
         let arcContainer = Entity()
 
         var previousPoint: SIMD3<Float>?
-
+        
         for i in 0...segments {
 
             let t = Float(i) / Float(segments)
@@ -446,7 +449,7 @@ class MyEntities {
 
             previousPoint = point
         }
-
+        
         angleArcEntity = arcContainer
         angleContainer.addChild(arcContainer)
 
@@ -529,6 +532,9 @@ class MyEntities {
         for angle in placedAngles {
             angle.container.isEnabled = true
         }
+        
+        // show the active angle container (including incomplete angle)
+        angleContainer.isEnabled = true
     }
     // MARK: - Formatting and Display
     
