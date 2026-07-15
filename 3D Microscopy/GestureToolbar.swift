@@ -1,3 +1,4 @@
+
 //
 //  GestureToolbar.swift
 //  3D Microscopy
@@ -38,7 +39,7 @@ struct GestureToolbar: View {
                     if !appModel.isOn && wasOn {
                         appModel.myEntities.fingerTips[.left]?.position = SIMD3<Float>(-1000, -1000, -1000)
                         appModel.myEntities.fingerTips[.right]?.position = SIMD3<Float>(-1000, -1000, -1000)
-                    }
+                    } 
                 } label: {
                     HStack {
                         //icons for every gesture
@@ -66,6 +67,7 @@ struct GestureToolbar: View {
                     .foregroundColor(.white)
                     .clipShape(Capsule())
                 }
+                .buttonStyle(.plain)
             }
         }
         .padding()
@@ -73,3 +75,4 @@ struct GestureToolbar: View {
         .cornerRadius(20)
     }
 }
+

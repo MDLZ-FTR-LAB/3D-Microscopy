@@ -1,3 +1,4 @@
+
 //
 //  ContentView.swift
 //  3D Microscopy
@@ -22,13 +23,11 @@ struct ContentView: View {
             Button("Import Model File") {
                 showImporter = true
             }
-            .padding()
             .background(Color.purple)
             .foregroundColor(.white)
             .cornerRadius(10)
 
             ShowModelButton()
-                .padding()
                 .background(Color.orange)
                 .foregroundColor(.white)
                 .cornerRadius(10)
@@ -99,3 +98,4 @@ struct ContentView: View {
         }
     }
 }
+
