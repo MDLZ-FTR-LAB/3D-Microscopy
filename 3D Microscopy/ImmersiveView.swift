@@ -164,48 +164,18 @@ struct ImmersiveView: View {
                         }
                 )
             
-        
-
         case .rotate:
-                content().gesture(
-                    DragGesture()
-                        .onChanged { value in
-                            guard let entity = entity else { return }
-                            let sensitivity: Float = 0.005
-                            
-                            // Get current total translation
-                            let currentX = Float(value.translation.width)
-                            let currentY = Float(value.translation.height)
-                            
-                            // Calculate delta (change since last frame)
-                            let lastX = lastDragPosition?.x ?? currentX
-                            let lastY = lastDragPosition?.y ?? currentY
-                            
-                            let deltaX = (currentX - lastX) * sensitivity
-                            let deltaY = (currentY - lastY) * sensitivity
-                            
-                            // Horizontal delta → Y-axis rotation
-                            let rotY = simd_quatf(angle: deltaX, axis: SIMD3<Float>(0, 1, 0))
-                            // Vertical delta → X-axis rotation
-                            let rotX = simd_quatf(angle: deltaY, axis: SIMD3<Float>(1, 0, 0))
-                            
-                            // Compose and apply incrementally
-                            let combinedRotation = rotY * rotX
-                            entity.transform.rotation = combinedRotation * entity.transform.rotation
-                            
-                            // Store current position for next frame's delta
-                            lastDragPosition = SIMD3<Float>(currentX, currentY, 0)
-                        }
-                        .onEnded { _ in
-                            lastDragPosition = nil
-                        }
-                )
-
-
-
-
-
-
+            content().gesture(
+                DragGesture()
+                    .onChanged { value in
+                        guard let entity = entity else { return }
+                        let sensitivity: Float = 0.001
+                        let angle = Float(value.translation.width) * sensitivity
+                        let rotation = simd_quatf(angle: angle, axis: [0, 1, 0])
+                        entity.transform.rotation = rotation * entity.transform.rotation
+                    }
+            )
+            
         case .scale:
             content().gesture(
                 MagnificationGesture().onChanged { value in

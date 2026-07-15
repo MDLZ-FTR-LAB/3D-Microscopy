@@ -10,6 +10,7 @@ import SwiftUI
 struct GestureToolbar: View {
     @EnvironmentObject var appModel: AppModel
     @Environment(\.openWindow) private var openWindow
+    // check to see which tutorial should show and whether it has been shown yet or not
     @State private var measureTutorialShown = false
     @State private var angleTutorialShown = false
     
@@ -17,11 +18,9 @@ struct GestureToolbar: View {
         HStack(spacing: 16) {
             ForEach(GestureMode.allCases, id: \.self) { mode in
                 Button {
-                    
-                    appModel.modeSwitchTime = Date()
                     appModel.gestureMode = mode
-
                     
+                    //if presses measure enables hand tracking
                     let wasOn = appModel.isOn
                     appModel.isOn = (mode == .measure || mode == .angle)
                     
@@ -35,14 +34,14 @@ struct GestureToolbar: View {
                         angleTutorialShown = true
                     }
                     
+                    // reset finger positions
                     if !appModel.isOn && wasOn {
                         appModel.myEntities.fingerTips[.left]?.position = SIMD3<Float>(-1000, -1000, -1000)
                         appModel.myEntities.fingerTips[.right]?.position = SIMD3<Float>(-1000, -1000, -1000)
                     }
-                
-                    
                 } label: {
                     HStack {
+                        //icons for every gesture
                         switch mode {
                         case .none:
                             Image(systemName: "hand.raised.slash")
@@ -59,7 +58,7 @@ struct GestureToolbar: View {
                         }
                         
                         Text(mode.rawValue.capitalized)
-                            .fixedSize()
+                            .fixedSize() // prevents wrapping
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
@@ -67,7 +66,6 @@ struct GestureToolbar: View {
                     .foregroundColor(.white)
                     .clipShape(Capsule())
                 }
-            
             }
         }
         .padding()
