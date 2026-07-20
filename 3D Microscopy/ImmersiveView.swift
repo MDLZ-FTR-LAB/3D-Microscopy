@@ -1,3 +1,4 @@
+
 //
 //  ImmersiveView.swift
 //  3D Microscopy
@@ -11,6 +12,7 @@ import simd
 
 struct ImmersiveView: View {
     @EnvironmentObject private var appModel: AppModel
+    @EnvironmentObject var actionUndoManager: ActionUndoManager
     @State private var modelEntity: Entity? = nil
     @Environment(\.openWindow) private var openWindow
     
@@ -21,6 +23,13 @@ struct ImmersiveView: View {
     // Add a state variable to force RealityView updates
     @State private var updateTrigger: Bool = false
     @State private var scaleStart: SIMD3<Float>? = nil
+    
+    // Rotation tracking for multiaxial rotation
+    @State private var lastRotationDragLocation: CGPoint? = nil
+    @State private var accumulatedRotation: simd_quatf = simd_quatf(ix: 0, iy: 0, iz: 0, r: 1)
+    
+    // Store transform at gesture start for undo
+    @State private var transformAtGestureStart: Transform? = nil
     
     var body: some View {
         gestureWrapper(for: modelEntity) {
@@ -94,6 +103,9 @@ struct ImmersiveView: View {
                     wrappedEntity.setPosition([0, 1, -1], relativeTo: nil)
                     modelEntity = wrappedEntity
                     
+                    // Reset accumulated rotation for new model
+                    accumulatedRotation = simd_quatf(ix: 0, iy: 0, iz: 0, r: 1)
+                    
                     // Toggle updateTrigger to force RealityView to re-render
                     updateTrigger.toggle()
                     
@@ -140,27 +152,44 @@ struct ImmersiveView: View {
             content()
                 .gesture(
                     DragGesture()
-                        .updating($dragOffset) { value, state, _ in
-                            state = value.translation
-                        }
                         .onChanged { value in
                             guard let entity = entity else { return }
                             
+                            // Capture transform at start of gesture for undo
+                            if transformAtGestureStart == nil {
+                                transformAtGestureStart = entity.transform
+                            }
+                            
                             let currentX = Float(value.translation.width)
-                            let currentZ = Float(value.translation.height)
+                            let currentY = Float(value.translation.height)
                             
                             let lastX = lastDragPosition?.x ?? 0
-                            let lastZ = lastDragPosition?.z ?? 0
+                            let lastY = lastDragPosition?.y ?? 0
                             
+                            // Horizontal drag → X axis, Vertical drag → Y axis (inverted)
                             let deltaX = (currentX - lastX) * 0.001
-                            let deltaZ = (lastZ - currentZ) * 0.001
+                            let deltaY = (lastY - currentY) * 0.001
                             
-                            entity.position += SIMD3<Float>(deltaX, 0, deltaZ)
+                            entity.position += SIMD3<Float>(deltaX, deltaY, 0)
                             
-                            lastDragPosition = SIMD3<Float>(currentX, 0, currentZ)
+                            lastDragPosition = SIMD3<Float>(currentX, currentY, 0)
                         }
                         .onEnded { _ in
+                            // Push undo action with the transform before this drag started
+                            if let entity = entity, let startTransform = transformAtGestureStart {
+                                actionUndoManager.push(.transformChanged(entity: entity, previousTransform: startTransform))
+                            }
                             lastDragPosition = nil
+                            transformAtGestureStart = nil
+                        }
+                )
+                .simultaneousGesture(
+                    MagnificationGesture()
+                        .onChanged { value in
+                            guard let entity = entity else { return }
+                            // Use pinch in drag mode to move along Z axis
+                            let zDelta = Float(value - 1.0) * 0.01
+                            entity.position += SIMD3<Float>(0, 0, -zDelta)
                         }
                 )
             
@@ -169,32 +198,72 @@ struct ImmersiveView: View {
                 DragGesture()
                     .onChanged { value in
                         guard let entity = entity else { return }
-                        let sensitivity: Float = 0.001
-                        let angle = Float(value.translation.width) * sensitivity
-                        let rotation = simd_quatf(angle: angle, axis: [0, 1, 0])
-                        entity.transform.rotation = rotation * entity.transform.rotation
+                        
+                        // Capture transform at start of gesture for undo
+                        if transformAtGestureStart == nil {
+                            transformAtGestureStart = entity.transform
+                        }
+                        
+                        let currentLocation = CGPoint(
+                            x: value.translation.width,
+                            y: value.translation.height
+                        )
+                        
+                        let lastLocation = lastRotationDragLocation ?? .zero
+                        
+                        // Calculate deltas since last frame
+                        let deltaX = Float(currentLocation.x - lastLocation.x)
+                        let deltaY = Float(currentLocation.y - lastLocation.y)
+                        
+                        let sensitivity: Float = 0.005
+                        
+                        // Horizontal drag → rotate around Y axis
+                        let yRotation = simd_quatf(angle: deltaX * sensitivity, axis: SIMD3<Float>(0, 1, 0))
+                        
+                        // Vertical drag → rotate around X axis
+                        let xRotation = simd_quatf(angle: deltaY * sensitivity, axis: SIMD3<Float>(1, 0, 0))
+                        
+                        // Combine: apply Y rotation then X rotation to accumulated
+                        accumulatedRotation = yRotation * xRotation * accumulatedRotation
+                        entity.transform.rotation = accumulatedRotation
+                        
+                        lastRotationDragLocation = currentLocation
+                    }
+                    .onEnded { _ in
+                        // Push undo action with the transform before this rotation started
+                        if let entity = entity, let startTransform = transformAtGestureStart {
+                            actionUndoManager.push(.transformChanged(entity: entity, previousTransform: startTransform))
+                        }
+                        lastRotationDragLocation = nil
+                        transformAtGestureStart = nil
                     }
             )
             
         case .scale:
             content().gesture(
-                MagnificationGesture().onChanged { value in
-                    guard let entity = entity else { return }
+                MagnificationGesture()
+                    .onChanged { value in
+                        guard let entity = entity else { return }
 
-                    // Capture the scale once per pinch gesture
-                    if scaleStart == nil {
-                        scaleStart = entity.transform.scale
+                        // Capture transform at start of gesture for undo
+                        if scaleStart == nil {
+                            scaleStart = entity.transform.scale
+                            transformAtGestureStart = entity.transform
+                        }
+
+                        let start = scaleStart ?? entity.transform.scale
+                        let m = Float(value) // value starts near 1.0 for each new pinch
+
+                        entity.transform.scale = start * SIMD3<Float>(repeating: m)
                     }
-
-                    let start = scaleStart ?? entity.transform.scale
-                    let m = Float(value) // value starts near 1.0 for each new pinch
-
-                    entity.transform.scale = start * SIMD3<Float>(repeating: m)
-                }
-                .onEnded { _ in
-                    // End of pinch: keep the final scale, reset only the baseline
-                    scaleStart = nil
-                }
+                    .onEnded { _ in
+                        // Push undo action with the transform before this scale started
+                        if let entity = entity, let startTransform = transformAtGestureStart {
+                            actionUndoManager.push(.transformChanged(entity: entity, previousTransform: startTransform))
+                        }
+                        scaleStart = nil
+                        transformAtGestureStart = nil
+                    }
             )
             
         case .measure:
@@ -209,3 +278,4 @@ struct ImmersiveView: View {
         }
     }
 }
+

@@ -1,3 +1,4 @@
+
 import SwiftUI
 
 struct TutorialView: View {
@@ -36,29 +37,29 @@ struct TutorialView: View {
                     instructionRow(
                         icon: "plus.circle.fill",
                         text: "Add a line measurement",
-                        gesture: "🤏 Left Pinch"
+                        gesture: "🤏 Double Left Pinch"
                     )
                     instructionRow(
                         icon: "minus.circle.fill",
                         text: "Remove a line measurement",
-                        gesture: "🤌 Right Pinch"
+                        gesture: "🤌 Double Right Pinch"
                     )
                 } else {
                     instructionRow(
                         icon: "plus.circle.fill",
                         text: "Place first angle line",
-                        gesture: "🤏 Left Pinch"
+                        gesture: "🤏 Double Left Pinch"
                     )
                     instructionRow(
                         icon: "plus.circle.fill",
                         text: "Place second line to complete angle",
-                        gesture: "🤏 Left Pinch"
+                        gesture: "🤏 Double Left Pinch"
                     )
-                    .fixedSize(horizontal: false, vertical: true) // allow wrapping vertically for longer text
+                    .fixedSize(horizontal: false, vertical: true)
                     instructionRow(
                         icon: "minus.circle.fill",
                         text: "Delete last angle",
-                        gesture: "🤌 Right Pinch"
+                        gesture: "🤌 Double Right Pinch"
                     )
                 }
 
@@ -72,8 +73,8 @@ struct TutorialView: View {
                     Text("To improve tracking accuracy, point your index finger while measuring")
                         .font(.title3)
                         .foregroundColor(.secondary)
-                        .fixedSize(horizontal: false, vertical: true) // allow wrapping vertically for longer text
-                        .multilineTextAlignment(.leading) // optional: align nicely
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.leading)
                 }
                 .padding(.bottom, 20)
             }
@@ -92,29 +93,27 @@ struct TutorialView: View {
                     .foregroundColor(.black)
                     .clipShape(Capsule())
             }
+            .buttonStyle(.plain)
         }
         .padding()
         .frame(width: 500, height: 500)
         .glassBackgroundEffect()
     }
-}
 
-private func instructionRow(icon: String, text: String, gesture: String) -> some View {
-    HStack {
-        Image(systemName: icon)
-            .foregroundColor(.white)
+    private func instructionRow(icon: String, text: String, gesture: String) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(.white)
 
-        Text(text)
-            .font(.title3.bold())
+            Text(text)
+                .font(.title3.bold())
 
-        Spacer()
+            Spacer()
 
-        Text(gesture)
-            .foregroundColor(.secondary)
-            .font(.callout)
+            Text(gesture)
+                .foregroundColor(.secondary)
+                .font(.callout)
+        }
     }
 }
 
-//#Preview {
-//    TutorialView(type: <#TutorialType#>)
-//}

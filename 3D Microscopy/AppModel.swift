@@ -1,3 +1,4 @@
+
 //
 //  AppModel.swift
 //  3D Microscopy
@@ -18,7 +19,13 @@ enum GestureMode: String, CaseIterable {
 @MainActor
 class AppModel: ObservableObject {
 
-    @Published var gestureMode: GestureMode = .none
+    @Published var gestureMode: GestureMode = .none {
+        didSet {
+            modeSwitchTime = Date()
+        }
+    }
+    var modeSwitchTime: Date = .distantPast
+
 
     let immersiveSpaceID = "ImmersiveSpace"
     enum ImmersiveSpaceState {
@@ -29,6 +36,10 @@ class AppModel: ObservableObject {
     @Published var immersiveSpaceState = ImmersiveSpaceState.closed
     @Published var modelURL: URL? = nil
     @Published var availableModels: [URL] = []
+    @Published var isInteractingWithMenu: Bool = false
+    @Published var splatURL: URL? = nil
+
+
     
     
     //for on/off button
@@ -50,8 +61,11 @@ class AppModel: ObservableObject {
     private var leftWasPinched: Bool = false
     private var rightWasPinched: Bool = false
     private let pinchThreshold: Float = 0.025 // 2.5cm threshold for pinch detection
-    private var lastPinchTime: Date = Date()
-    private let pinchCooldown: TimeInterval = 0.5 // Half second cooldown between pinches
+    // MARK: - Double Pinch Detection
+    private var leftLastPinchTime: Date = .distantPast
+    private var rightLastPinchTime: Date = .distantPast
+    private let doublePinchWindow: TimeInterval = 0.4 // seconds to detect second pinch
+
     
     func runSession() async {
         do {
@@ -98,7 +112,7 @@ class AppModel: ObservableObject {
             fingerTipEntity?.setTransformMatrix(originFromIndex, relativeTo: nil)
             
             // MARK: - Pinch Detection for Measure mode and Angle mode
-            if thumbJoint.isTracked && (gestureMode == .measure || gestureMode == .angle) && isOn {
+            if thumbJoint.isTracked && (gestureMode == .measure || gestureMode == .angle) && isOn && !isInteractingWithMenu {
                 let wristFromThumb = thumbJoint.anchorFromJointTransform
                 let originFromThumb = originFromWrist * wristFromThumb
                 
@@ -131,12 +145,9 @@ class AppModel: ObservableObject {
         }
     }
     
-    // MARK: - Pinch Detection Methods
+    // MARK: - Double Pinch Detection Methods
     private func detectPinchGesture(_ chirality: HandAnchor.Chirality, _ currentDistance: Float, _ indexPosition: SIMD3<Float>) {
         let now = Date()
-        
-        // Check cooldown to prevent rapid-fire pinches
-        guard now.timeIntervalSince(lastPinchTime) > pinchCooldown else { return }
         
         switch chirality {
         case .left:
@@ -144,15 +155,22 @@ class AppModel: ObservableObject {
             let isPinched = currentDistance < pinchThreshold
             
             if !wasPinched && isPinched {
-                switch gestureMode {
-                case .measure:
-                    handleLeftPinch() // add measurement/angle
-                case .angle:
-                    handleLeftAnglePinch(indexPosition)
-                default:
-                    break
+                // Check if this is the second pinch within the window
+                if now.timeIntervalSince(leftLastPinchTime) < doublePinchWindow {
+                    // DOUBLE PINCH — lock measurement / place angle
+                    switch gestureMode {
+                    case .measure:
+                        handleLeftPinch()
+                    case .angle:
+                        handleLeftAnglePinch(indexPosition)
+                    default:
+                        break
+                    }
+                    leftLastPinchTime = .distantPast // reset so next pinch starts fresh
+                } else {
+                    // First pinch — just record the time, do nothing
+                    leftLastPinchTime = now
                 }
-                lastPinchTime = now
             }
             leftWasPinched = isPinched
             leftPinchDistance = currentDistance
@@ -162,20 +180,28 @@ class AppModel: ObservableObject {
             let isPinched = currentDistance < pinchThreshold
             
             if !wasPinched && isPinched {
-                switch gestureMode {
-                case .measure:
-                    handleRightPinch()
-                case .angle:
-                    myEntities.removeLastAngle() // remove measurement / reset angle
-                default:
-                    break
+                // Check if this is the second pinch within the window
+                if now.timeIntervalSince(rightLastPinchTime) < doublePinchWindow {
+                    // DOUBLE PINCH — delete measurement / remove angle
+                    switch gestureMode {
+                    case .measure:
+                        handleRightPinch()
+                    case .angle:
+                        myEntities.removeLastAngle()
+                    default:
+                        break
+                    }
+                    rightLastPinchTime = .distantPast // reset
+                } else {
+                    // First pinch — just record the time, do nothing
+                    rightLastPinchTime = now
                 }
-                lastPinchTime = now
             }
             rightWasPinched = isPinched
             rightPinchDistance = currentDistance
         }
     }
+
     
     private func handleLeftPinch() {
         // Left hand pinch = Place measurement
@@ -214,3 +240,4 @@ class AppModel: ObservableObject {
         return "L: \(leftStatus) | R: \(rightStatus)"
     }
 }
+

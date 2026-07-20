@@ -1,3 +1,4 @@
+
 //
 //  MyEntities.swift
 //  3D Microscopy
@@ -311,6 +312,37 @@ class MyEntities {
         // hide any incomplete (single line) angles
         angleContainer.isEnabled = false
     }
+    
+    // MARK: - Undo Support Methods
+    
+    /// Removes a specific measurement from storage (called by UndoManager when undoing a placed measurement)
+    func removeMeasurementFromStorage(_ measurement: MeasurementLine) {
+        placedMeasurements.removeAll { $0.id == measurement.id }
+    }
+    
+    /// Re-adds a measurement that was previously deleted (called by UndoManager when undoing a deletion)
+    func reAddMeasurement(_ measurement: MeasurementLine) {
+        root.addChild(measurement.entity)
+        placedMeasurements.append(measurement)
+        
+        // Respect visibility based on current mode
+        measurement.entity.isEnabled = !isAngleMode
+    }
+    
+    /// Removes a specific angle from storage (called by UndoManager when undoing a placed angle)
+    func removeAngleFromStorage(_ angle: AngleMeasurement) {
+        placedAngles.removeAll { $0.id == angle.id }
+    }
+    
+    /// Re-adds an angle that was previously deleted (called by UndoManager when undoing a deletion)
+    func reAddAngle(_ angle: AngleMeasurement) {
+        root.addChild(angle.container)
+        placedAngles.append(angle)
+        
+        // Respect visibility based on current mode
+        angle.container.isEnabled = isAngleMode
+    }
+    
     // MARK: - Angle Placement Logic
 
     func placeAnglePoint() {
@@ -711,3 +743,4 @@ class MyEntities {
         return cylinder
     }
 }
+

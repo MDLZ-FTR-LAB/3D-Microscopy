@@ -1,3 +1,4 @@
+
 import SwiftUI
 import RealityKitContent
 // import RealityKit   // Uncomment after structure compiles, and only if your target supports it.
@@ -6,6 +7,7 @@ import RealityKitContent
 struct _D_MicroscopyApp: App {
 
     @StateObject private var appModel = AppModel()
+    @StateObject private var actionUndoManager = ActionUndoManager()
 
     var body: some Scene {
 
@@ -13,6 +15,7 @@ struct _D_MicroscopyApp: App {
         WindowGroup(id: "MainWindow") {
             ContentView()
                 .environmentObject(appModel)
+                .environmentObject(actionUndoManager)
         }
         .windowStyle(.plain)
         
@@ -20,6 +23,7 @@ struct _D_MicroscopyApp: App {
         ImmersiveSpace(id: appModel.immersiveSpaceID) {
             ImmersiveView()
                 .environmentObject(appModel)
+                .environmentObject(actionUndoManager)
                 .onAppear {
                     appModel.immersiveSpaceState = .open
                     print("Immersive appeared. isOn: \(appModel.isOn), modelURL: \(String(describing: appModel.modelURL))")
@@ -28,12 +32,13 @@ struct _D_MicroscopyApp: App {
                     appModel.immersiveSpaceState = .closed
                 }
         }
-        .immersionStyle(selection: .constant(.mixed), in: .mixed) // changed `full` to `mixed`
+        .immersionStyle(selection: .constant(.mixed), in: .mixed)
         
         // Gesture toolbar
         WindowGroup(id: "GestureControlPanel") {
             GestureToolbar()
                 .environmentObject(appModel)
+                .environmentObject(actionUndoManager)
         }
         .windowStyle(.plain)
         .defaultSize(width: 1200, height: 100)
@@ -46,3 +51,4 @@ struct _D_MicroscopyApp: App {
         }
     }
 }
+
