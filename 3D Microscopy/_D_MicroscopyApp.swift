@@ -1,7 +1,5 @@
-
 import SwiftUI
 import RealityKitContent
-// import RealityKit   // Uncomment after structure compiles, and only if your target supports it.
 
 @main
 struct _D_MicroscopyApp: App {
@@ -11,7 +9,7 @@ struct _D_MicroscopyApp: App {
 
     var body: some Scene {
 
-        // Main screen launch
+        // Main screen launch (import / show model controls)
         WindowGroup(id: "MainWindow") {
             ContentView()
                 .environmentObject(appModel)
@@ -42,7 +40,13 @@ struct _D_MicroscopyApp: App {
         }
         .windowStyle(.plain)
         .defaultSize(width: 1200, height: 100)
-
+        // In front, toward the bottom of the user's field of view
+        .defaultWindowPlacement { content, context in
+            if let mainWindow = context.windows.first(where: { $0.id == "MainWindow" }) {
+                return WindowPlacement(.below(mainWindow))
+            }
+            return WindowPlacement()
+        }
         // Measurement and angle tutorial
         WindowGroup(id: "TutorialView", for: TutorialType.self) { $type in
             if let type {
@@ -51,4 +55,3 @@ struct _D_MicroscopyApp: App {
         }
     }
 }
-

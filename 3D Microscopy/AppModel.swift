@@ -26,7 +26,6 @@ class AppModel: ObservableObject {
     }
     var modeSwitchTime: Date = .distantPast
 
-
     let immersiveSpaceID = "ImmersiveSpace"
     enum ImmersiveSpaceState {
         case closed
@@ -39,16 +38,16 @@ class AppModel: ObservableObject {
     @Published var isInteractingWithMenu: Bool = false
     @Published var splatURL: URL? = nil
 
+    // MARK: - Undo Manager Reference
+    var undoManager: ActionUndoManager?
 
-    
-    
     //for on/off button
     @Published var isOn: Bool = false {
         didSet {
             myEntities.root.isEnabled = isOn
         }
     }
-    
+
     //hand tracking code
     private var arKitSession = ARKitSession()
     private var handTrackingProvider = HandTrackingProvider()
@@ -66,7 +65,6 @@ class AppModel: ObservableObject {
     private var rightLastPinchTime: Date = .distantPast
     private let doublePinchWindow: TimeInterval = 0.4 // seconds to detect second pinch
 
-    
     func runSession() async {
         do {
             if HandTrackingProvider.isSupported {
@@ -80,42 +78,42 @@ class AppModel: ObservableObject {
             print("Failed to start hand tracking: \(error)")
         }
     }
-    
+
     func processAnchorUpdates() async {
         print("Starting to process anchor updates...")
-        
+
         for await update in handTrackingProvider.anchorUpdates {
             let handAnchor = update.anchor
-            
+
             if !handAnchor.isTracked {
                 continue
             }
-            
+
             guard let handSkeleton = handAnchor.handSkeleton else {
                 continue
             }
-            
+
             // Get both index finger tip and thumb tip for pinch detection
             let indexJoint = handSkeleton.joint(.indexFingerTip)
             let thumbJoint = handSkeleton.joint(.thumbTip)
-            
+
             guard indexJoint.isTracked else {
                 continue
             }
-            
+
             let originFromWrist = handAnchor.originFromAnchorTransform
             let wristFromIndex = indexJoint.anchorFromJointTransform
             let originFromIndex = originFromWrist * wristFromIndex
-            
+
             // Update fingertip entity position (existing functionality)
             let fingerTipEntity = myEntities.fingerTips[handAnchor.chirality]
             fingerTipEntity?.setTransformMatrix(originFromIndex, relativeTo: nil)
-            
+
             // MARK: - Pinch Detection for Measure mode and Angle mode
             if thumbJoint.isTracked && (gestureMode == .measure || gestureMode == .angle) && isOn && !isInteractingWithMenu {
                 let wristFromThumb = thumbJoint.anchorFromJointTransform
                 let originFromThumb = originFromWrist * wristFromThumb
-                
+
                 // Calculate positions
                 let indexPos = SIMD3<Float>(originFromIndex.columns.3.x,
                                           originFromIndex.columns.3.y,
@@ -123,17 +121,17 @@ class AppModel: ObservableObject {
                 let thumbPos = SIMD3<Float>(originFromThumb.columns.3.x,
                                           originFromThumb.columns.3.y,
                                           originFromThumb.columns.3.z)
-                
+
                 let pinchDistance = distance(indexPos, thumbPos)
-                
+
                 // Detect pinch gestures
                 detectPinchGesture(handAnchor.chirality, pinchDistance, indexPos)
             }
-            
+
             // Only update visual elements if measuring is on (existing functionality)
             if isOn {
                 myEntities.update()
-                
+
                 // Update result string based on current mode
                 switch gestureMode {
                 case .measure:
@@ -144,18 +142,17 @@ class AppModel: ObservableObject {
             }
         }
     }
-    
+
     // MARK: - Double Pinch Detection Methods
     private func detectPinchGesture(_ chirality: HandAnchor.Chirality, _ currentDistance: Float, _ indexPosition: SIMD3<Float>) {
         let now = Date()
-        
+
         switch chirality {
         case .left:
             let wasPinched = leftWasPinched
             let isPinched = currentDistance < pinchThreshold
-            
+
             if !wasPinched && isPinched {
-                // Check if this is the second pinch within the window
                 if now.timeIntervalSince(leftLastPinchTime) < doublePinchWindow {
                     // DOUBLE PINCH — lock measurement / place angle
                     switch gestureMode {
@@ -166,34 +163,31 @@ class AppModel: ObservableObject {
                     default:
                         break
                     }
-                    leftLastPinchTime = .distantPast // reset so next pinch starts fresh
+                    leftLastPinchTime = .distantPast
                 } else {
-                    // First pinch — just record the time, do nothing
                     leftLastPinchTime = now
                 }
             }
             leftWasPinched = isPinched
             leftPinchDistance = currentDistance
-            
+
         case .right:
             let wasPinched = rightWasPinched
             let isPinched = currentDistance < pinchThreshold
-            
+
             if !wasPinched && isPinched {
-                // Check if this is the second pinch within the window
                 if now.timeIntervalSince(rightLastPinchTime) < doublePinchWindow {
                     // DOUBLE PINCH — delete measurement / remove angle
                     switch gestureMode {
                     case .measure:
                         handleRightPinch()
                     case .angle:
-                        myEntities.removeLastAngle()
+                        handleRightAnglePinch()
                     default:
                         break
                     }
-                    rightLastPinchTime = .distantPast // reset
+                    rightLastPinchTime = .distantPast
                 } else {
-                    // First pinch — just record the time, do nothing
                     rightLastPinchTime = now
                 }
             }
@@ -202,37 +196,43 @@ class AppModel: ObservableObject {
         }
     }
 
-    
     private func handleLeftPinch() {
-        // Left hand pinch = Place measurement
         myEntities.placeMeasurement()
+        undoManager?.push(.measurementPlaced)
         print("Measurement placed via left hand pinch")
     }
-    
+
     private func handleRightPinch() {
-        // Right hand pinch = Remove last measurement
         myEntities.removeLastMeasurement()
         print("Last measurement removed via right hand pinch")
     }
-    
+
     private func handleLeftAnglePinch(_ indexPosition: SIMD3<Float>) {
         myEntities.placeAnglePoint()
+        undoManager?.push(.anglePlaced)
         print("Angle point placed")
     }
+
+    private func handleRightAnglePinch() {
+        myEntities.removeLastAngle()
+        print("Last angle removed via right hand pinch")
+    }
+
     // MARK: - Public Methods for UI Controls
     func placeMeasurement() {
         myEntities.placeMeasurement()
+        undoManager?.push(.measurementPlaced)
     }
-    
+
     func removeLastMeasurement() {
         myEntities.removeLastMeasurement()
     }
-    
+
     func clearAllMeasurements() {
         myEntities.clearAllMeasurements()
         print("🧹 All measurements cleared")
     }
-    
+
     // MARK: - Debug Methods
     func getPinchStatus() -> String {
         let leftStatus = leftWasPinched ? "PINCHED" : String(format: "%.1fcm", leftPinchDistance * 100)

@@ -34,15 +34,26 @@ struct ContentView: View {
 
             List(appModel.availableModels, id: \.self) { modelURL in
                 Button(modelURL.lastPathComponent) {
-                    appModel.modelURL = modelURL
+                    let ext = modelURL.pathExtension.lowercased()
+                    if ext == "ply" {
+                        appModel.splatURL = modelURL
+                        appModel.modelURL = nil
+                    } else {
+                        appModel.modelURL = modelURL
+                        appModel.splatURL = nil
+                    }
                 }
+                .foregroundColor(isSelected(modelURL) ? .green : .primary)
             }
             .frame(height: 200)
         }
         .fileImporter(
             isPresented: $showImporter,
-            //only importing .obj for now
-            allowedContentTypes: [UTType(filenameExtension: "obj")!],
+            allowedContentTypes: [
+                UTType(filenameExtension: "obj")!,
+                UTType(filenameExtension: "usdz")!,
+                UTType(filenameExtension: "ply")!
+            ],
             allowsMultipleSelection: true
         ) { result in
             switch result {
@@ -67,7 +78,12 @@ struct ContentView: View {
         }
     }
 
-    //helper functions for loading models
+    // MARK: - Helpers
+
+    private func isSelected(_ url: URL) -> Bool {
+        url == appModel.modelURL || url == appModel.splatURL
+    }
+
     private func loadAvailableModels() {
         let docsURL = FileManager.default
             .urls(for: .documentDirectory, in: .userDomainMask)
@@ -75,8 +91,9 @@ struct ContentView: View {
         do {
             let files = try FileManager.default
                 .contentsOfDirectory(at: docsURL, includingPropertiesForKeys: nil)
+            let supportedExtensions = ["obj", "usdz", "ply"]
             appModel.availableModels = files
-                .filter { $0.pathExtension.lowercased() == "obj" }
+                .filter { supportedExtensions.contains($0.pathExtension.lowercased()) }
         } catch {
             print("Failed to load models: \(error)")
         }
@@ -92,7 +109,7 @@ struct ContentView: View {
                 try FileManager.default.removeItem(at: destURL)
             }
             try FileManager.default.copyItem(at: originalURL, to: destURL)
-            print("copied")
+            print("✅ Copied \(originalURL.lastPathComponent) to Documents")
         } catch {
             print("Copy failed: \(error)")
         }
