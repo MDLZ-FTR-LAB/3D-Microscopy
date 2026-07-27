@@ -29,6 +29,9 @@ struct ImmersiveView: View {
 
     // Undo: captures transform BEFORE gesture starts
     @State private var preGestureTransform: Transform?
+    
+    @State private var slicePlaneVisualizer: SlicePlaneVisualizer?
+
 
     var body: some View {
         RealityView { content in
@@ -37,7 +40,11 @@ struct ImmersiveView: View {
 
             // Add measurement/angle entities to the scene
             content.add(appModel.myEntities.root)
-        }
+            
+            let visualizer = SlicePlaneVisualizer()
+                content.add(visualizer.planeEntity)
+                slicePlaneVisualizer = visualizer        }
+        
         .task {
             await loadModel()
         }
@@ -47,6 +54,11 @@ struct ImmersiveView: View {
         .task {
             await appModel.processAnchorUpdates()
         }
+        .task {
+            await updateSlicePlane()
+        }
+       
+
         .gesture(pinchDragGesture)
         .gesture(scaleGesture)
         .onAppear {
@@ -54,7 +66,55 @@ struct ImmersiveView: View {
             appModel.undoManager = undoManager
         }
     }
+    private func getIndexFingerData() -> (position: SIMD3<Float>, direction: SIMD3<Float>)? {
+        guard let rightHand = appModel.rightHandAnchor,
+              let skeleton = rightHand.handSkeleton else { return nil }
 
+        let tipJoint = skeleton.joint(.indexFingerTip)
+        let pipJoint = skeleton.joint(.indexFingerIntermediateBase)
+
+        guard tipJoint.isTracked, pipJoint.isTracked else { return nil }
+
+        let originFromWrist = rightHand.originFromAnchorTransform
+
+        let tipTransform = originFromWrist * tipJoint.anchorFromJointTransform
+        let pipTransform = originFromWrist * pipJoint.anchorFromJointTransform
+
+        let tipPosition = SIMD3<Float>(
+            tipTransform.columns.3.x,
+            tipTransform.columns.3.y,
+            tipTransform.columns.3.z
+        )
+
+        let pipPosition = SIMD3<Float>(
+            pipTransform.columns.3.x,
+            pipTransform.columns.3.y,
+            pipTransform.columns.3.z
+        )
+
+        // Direction: from knuckle toward fingertip
+        let direction = normalize(tipPosition - pipPosition)
+
+        return (position: tipPosition, direction: direction)
+    }
+
+    private func updateSlicePlane() async {
+        while true {
+            if appModel.gestureMode == .slice {
+                if let indexData = getIndexFingerData() {
+                    slicePlaneVisualizer?.update(
+                        fingerTipPosition: indexData.position,
+                        fingerDirection: indexData.direction
+                    )
+                }
+            } else {
+                slicePlaneVisualizer?.hide()
+            }
+
+            try? await Task.sleep(nanoseconds: 16_666_667)
+        }
+    }
+    
     // MARK: - Model Loading
 
     private func loadModel() async {

@@ -13,7 +13,7 @@ import Combine
 
 
 enum GestureMode: String, CaseIterable {
-    case none, drag, rotate, scale, measure, angle
+    case none, drag, rotate, scale, measure, angle, slice
 }
 
 @MainActor
@@ -37,6 +37,8 @@ class AppModel: ObservableObject {
     @Published var availableModels: [URL] = []
     @Published var isInteractingWithMenu: Bool = false
     @Published var splatURL: URL? = nil
+    @Published var rightHandAnchor: HandAnchor?
+
 
     // MARK: - Undo Manager Reference
     var undoManager: ActionUndoManager?
@@ -88,6 +90,11 @@ class AppModel: ObservableObject {
             if !handAnchor.isTracked {
                 continue
             }
+            // Store the right hand anchor for slice plane
+            if handAnchor.chirality == .right {
+                rightHandAnchor = handAnchor
+            }
+
 
             guard let handSkeleton = handAnchor.handSkeleton else {
                 continue
@@ -127,7 +134,14 @@ class AppModel: ObservableObject {
                 // Detect pinch gestures
                 detectPinchGesture(handAnchor.chirality, pinchDistance, indexPos)
             }
-
+            if gestureMode == .measure || gestureMode == .angle {
+                let fingerTipEntity = myEntities.fingerTips[handAnchor.chirality]
+                fingerTipEntity?.setTransformMatrix(originFromIndex, relativeTo: nil)
+            } else {
+                // Hide arrows by moving off-screen
+                let fingerTipEntity = myEntities.fingerTips[handAnchor.chirality]
+                fingerTipEntity?.position = SIMD3<Float>(-1000, -1000, -1000)
+            }
             // Only update visual elements if measuring is on (existing functionality)
             if isOn {
                 myEntities.update()

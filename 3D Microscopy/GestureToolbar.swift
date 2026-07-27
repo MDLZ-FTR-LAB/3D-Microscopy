@@ -45,8 +45,8 @@ struct GestureToolbar: View {
                         
                         //if presses measure enables hand tracking
                         let wasOn = appModel.isOn
-                        appModel.isOn = (mode == .measure || mode == .angle)
-                        
+                        appModel.isOn = (mode == .measure || mode == .angle || mode == .slice)
+
                         if mode == .measure && !measureTutorialShown {
                             openWindow(id: "TutorialView", value: TutorialType.measure)
                             measureTutorialShown = true
@@ -78,7 +78,10 @@ struct GestureToolbar: View {
                                 Image(systemName: "ruler")
                             case .angle:
                                 Image(systemName: "angle")
+                            case .slice:
+                                Image(systemName: "square.stack.3d.down.forward")
                             }
+                        
                             
                             Text(mode.rawValue.capitalized)
                                 .fixedSize()
