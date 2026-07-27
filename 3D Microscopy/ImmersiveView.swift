@@ -26,6 +26,10 @@ struct ImmersiveView: View {
 
     // Scale state
     @State private var initialScale: Float = 1.0
+    
+    @State private var scaleLabel = Entity()
+    @State private var currentDisplayScale: Float = 1.0
+
 
     // Undo: captures transform BEFORE gesture starts
     @State private var preGestureTransform: Transform?
@@ -40,6 +44,11 @@ struct ImmersiveView: View {
 
             // Add measurement/angle entities to the scene
             content.add(appModel.myEntities.root)
+            
+            // Scale label
+               scaleLabel.components.set(BillboardComponent())
+               scaleLabel.isEnabled = false
+               content.add(scaleLabel)
             
             let visualizer = SlicePlaneVisualizer()
                 content.add(visualizer.planeEntity)
@@ -139,6 +148,7 @@ struct ImmersiveView: View {
             if isSplat {
                 entity.scale = SIMD3<Float>(repeating: 0.1)
                 configureSplatForInteraction(entity)
+
             } else {
                 configureModelForInteraction(entity)
             }
@@ -306,7 +316,6 @@ struct ImmersiveView: View {
             .onChanged { value in
                 guard appModel.gestureMode == GestureMode.scale else { return }
 
-                // Capture transform BEFORE scaling starts
                 if preGestureTransform == nil {
                     preGestureTransform = wrapperEntity.transform
                     initialScale = wrapperEntity.scale.x
@@ -314,11 +323,13 @@ struct ImmersiveView: View {
 
                 let newScale = initialScale * Float(value.magnification)
                 wrapperEntity.scale = SIMD3<Float>(repeating: newScale)
+
+                // Update magnification label
+                updateScaleLabel(newScale)
             }
             .onEnded { value in
                 guard appModel.gestureMode == GestureMode.scale else { return }
 
-                // Push undo with the ORIGINAL transform (before scaling started)
                 if let original = preGestureTransform {
                     undoManager.push(.transformChanged(
                         entity: wrapperEntity,
@@ -327,7 +338,47 @@ struct ImmersiveView: View {
                 }
                 initialScale = 1.0
                 preGestureTransform = nil
+
+                // Hide label after a delay
+                Task {
+                    try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+                    scaleLabel.isEnabled = false
+                }
             }
     }
+
+    private func updateScaleLabel(_ scale: Float) {
+        // Calculate magnification relative to initial load scale (0.1)
+        let magnification = scale / 0.1  // e.g. scale 0.2 = 2x, scale 1.0 = 10x
+
+        let text: String
+        if magnification < 1.0 {
+            text = String(format: "%.1fx", magnification)
+        } else if magnification < 10.0 {
+            text = String(format: "%.1fx", magnification)
+        } else {
+            text = String(format: "%.0fx", magnification)
+        }
+
+        let textMesh = MeshResource.generateText(
+            text,
+            extrusionDepth: 0.001,
+            font: .systemFont(ofSize: 0.03, weight: .bold),
+            containerFrame: .zero,
+            alignment: .center,
+            lineBreakMode: .byWordWrapping
+        )
+
+        scaleLabel.components.set(ModelComponent(
+            mesh: textMesh,
+            materials: [SimpleMaterial(color: .white, roughness: 0.1, isMetallic: false)]
+        ))
+
+        // Position above the model
+        scaleLabel.position = wrapperEntity.position + SIMD3<Float>(0, 0.3, 0)
+        scaleLabel.isEnabled = true
+        currentDisplayScale = magnification
+    }
+
 }
 

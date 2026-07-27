@@ -33,7 +33,6 @@ struct GestureToolbar: View {
                 .clipShape(Capsule())
             }
             .buttonStyle(.plain)
-            .hoverEffectDisabled()
             .disabled(!actionUndoManager.canUndo)
             .opacity(actionUndoManager.canUndo ? 1.0 : 0.5)
             
@@ -94,7 +93,6 @@ struct GestureToolbar: View {
                         .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
-                    .hoverEffectDisabled()
                 }
             }
             .padding()
